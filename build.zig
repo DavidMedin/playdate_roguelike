@@ -4,7 +4,7 @@ const builtin = @import("builtin");
 pub fn build(b: *std.build.Builder) !void {
     const optimize = b.standardOptimizeOption(.{});
 
-    const pdx_file_name = "example.pdx";
+    const pdx_file_name = "roguelike";
 
     const ecs_mod = b.addModule("ecs", .{ .source_file = .{ .path = "../zig-ecs/src/main.zig" }, .dependencies = &.{} });
 

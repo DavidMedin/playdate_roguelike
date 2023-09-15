@@ -1,5 +1,5 @@
-name=dater
+name=RogueLike
 author=David Medin
-description=Gonner Replica
-bundleID=com.davidmedin.date
+description=Roguelike Attempt
+bundleID=com.davidmedin.rogue
 imagePath=.
