@@ -1,0 +1,5 @@
+name=dater
+author=David Medin
+description=Gonner Replica
+bundleID=com.davidmedin.date
+imagePath=.
