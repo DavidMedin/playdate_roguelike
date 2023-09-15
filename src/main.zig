@@ -2,12 +2,46 @@ const std = @import("std");
 const ecs = @import("ecs");
 const pdapi = @import("playdate_api_definitions.zig");
 
+fn component_allocator(playdate_api: *pdapi.PlaydateAPI) std.mem.Allocator {
+    return std.mem.Allocator{
+        .ptr = playdate_api,
+        .vtable = &std.mem.Allocator.VTable{
+            .alloc = struct {
+                pub fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, _: usize) ?[*]u8 {
+                    const playdate: *pdapi.PlaydateAPI = @ptrCast(@alignCast(ctx));
+                    _ = ptr_align;
+                    // TODO: Don't just throw away the ptr_align thing.
+                    return @ptrCast(playdate.system.realloc(null, len));
+                }
+            }.alloc,
+            .resize = struct {
+                pub fn resize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, _: usize) bool {
+                    const playdate: *pdapi.PlaydateAPI = @ptrCast(@alignCast(ctx));
+                    _ = buf_align;
+                    const new_addr = playdate.system.realloc(buf.ptr, new_len) orelse return false;
+                    if (new_addr == @as(*anyopaque, buf.ptr)) {
+                        return true;
+                    } else {
+                        _ = playdate.system.realloc(new_addr, 0);
+                        return false;
+                    }
+                }
+            }.resize,
+            .free = struct {
+                pub fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, _: usize) void {
+                    const playdate: *pdapi.PlaydateAPI = @ptrCast(@alignCast(ctx));
+                    _ = buf_align;
+                    _ = playdate.system.realloc(buf.ptr, 0);
+                }
+            }.free,
+        },
+    };
+}
+
 var g_playdate_image: *pdapi.LCDBitmap = undefined;
 var world: ecs.ECS = undefined;
 
 pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEvent, arg: u32) callconv(.C) c_int {
-    //TODO: replace with your own code!
-
     _ = arg;
     switch (event) {
         .EventInit => {
@@ -15,7 +49,7 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
             const font = playdate.graphics.loadFont("/System/Fonts/Asheville-Sans-14-Bold.pft", null).?;
             playdate.graphics.setFont(font);
 
-            world = ecs.ECS.init() catch unreachable;
+            world = ecs.ECS.init(component_allocator(playdate)) catch unreachable;
 
             playdate.system.setUpdateCallback(update_and_render, playdate);
         },
