@@ -1,10 +1,14 @@
 const std = @import("std");
-const ecs = @import("ecs");
-const pdapi = @import("playdate_api_definitions.zig");
 
-const image = @import("image.zig");
-const controls = @import("controls.zig");
-const transform = @import("transform.zig");
+const pdapi = @import("playdate_api_definitions.zig");
+const ecs = @import("ecs");
+
+const Image = @import("image.zig").Image;
+const Controls = @import("controls.zig").Controls;
+const Transform = @import("transform.zig").Transform;
+const Brain = @import("brain.zig").Brain;
+const Body = @import("body.zig").Body;
+
 var global_playdate: ?*pdapi.PlaydateAPI = null;
 
 fn component_allocator(playdate_api: *pdapi.PlaydateAPI) std.mem.Allocator {
@@ -84,11 +88,22 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
 }
 
 fn init_ecs(playdate: *pdapi.PlaydateAPI) !void {
-    const playdate_icon = try world.new_entity();
+    //const playdate_icon = try world.new_entity();
     const playdate_image = playdate.graphics.loadBitmap("playdate_image", null).?;
-    try world.add_component(playdate_icon, "image", image.Image{ .bitmap = playdate_image });
-    try world.add_component(playdate_icon, "transform", transform.Transform{ .x = pdapi.LCD_COLUMNS / 2 - 16, .y = pdapi.LCD_ROWS / 2 - 16 });
-    try world.add_component(playdate_icon, "controls", controls.Controls{ .dummy_data = 3 });
+    //try world.add_component(playdate_icon, "image", image.Image{ .bitmap = playdate_image });
+    //try world.add_component(playdate_icon, "transform", transform.Transform{ .x = pdapi.LCD_COLUMNS / 2 - 16, .y = pdapi.LCD_ROWS / 2 - 16 });
+    //try world.add_component(playdate_icon, "controls", controls.Controls{ .dummy_data = 3 });
+
+    const player_brain: ecs.Entity = try world.new_entity();
+    try world.add_component(player_brain, "brain", Brain{ .reaction_time = 1, .body = undefined });
+
+    const player_body: ecs.Entity = try world.new_entity();
+    try world.add_component(player_body, "body", Body{ .brain = player_brain });
+    var brain_component: *Brain = (try world.get_component(player_brain, "brain", Brain)).?;
+    brain_component.*.body = player_body;
+
+    try world.add_component(player_body, "image", Image{ .bitmap = playdate_image });
+    try world.add_component(player_body, "transform", Transform{ .x = 4, .y = 4 });
 }
 
 fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
@@ -100,7 +115,7 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
     _ = pixel_width;
 
     // Iterate through all 'Controllable's.
-    var move_iter = ecs.data_iter(.{ .controls = controls.Controls, .transform = transform.Transform }).init(&world);
+    var move_iter = ecs.data_iter(.{ .controls = Controls, .transform = Transform }).init(&world);
     while (move_iter.next()) |slice| {
         controls.update_controls(playdate, slice.transform);
     }
