@@ -302,7 +302,7 @@ pub const SEEK_SET = 0;
 pub const SEEK_CUR = 1;
 pub const SEEK_END = 2;
 
-const FileStat = extern struct {
+pub const FileStat = extern struct {
     isdir: c_int,
     size: c_uint,
     m_year: c_int,

@@ -1,8 +1,9 @@
 const ecs = @import("ecs");
-const pdapi = @import("playdate_api_definitions.zig");
+const pdapi = @import("playdate.zig");
 const transform = @import("transform.zig");
 
-const BLOCK_SIZE = 20;
+const BLOCK_SIZE = 16;
+const BLOCK_COUNT = transform.Vector{ .x = pdapi.LCD_COLUMNS / BLOCK_SIZE, .y = pdapi.LCD_ROWS / BLOCK_SIZE }; // (24, 15)
 
 pub fn world_to_screen(vector: transform.Vector) transform.Vector {
     return .{ .x = vector.x * BLOCK_SIZE, .y = vector.y * BLOCK_SIZE };

@@ -1,6 +1,6 @@
 const std = @import("std");
 const ecs = @import("ecs");
-const pdapi = @import("playdate_api_definitions.zig");
+const pdapi = @import("playdate.zig");
 
 const transform = @import("transform.zig");
 const brain = @import("brain.zig");
