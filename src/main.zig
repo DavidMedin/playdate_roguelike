@@ -3,10 +3,10 @@
 // Zig Version : 0.12.0-dev.21+ac95cfe44
 
 const std = @import("std");
-const json = std.json;
 
 const pdapi = @import("playdate.zig");
 const ecs = @import("ecs");
+const ldtk = @import("ldtk.zig");
 
 const image = @import("image.zig");
 const controls = @import("controls.zig");
@@ -97,34 +97,11 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
             playdate.system.setUpdateCallback(update_and_render, playdate);
             playdate.system.resetElapsedTime();
             tick(playdate) catch unreachable;
-            test_json(playdate);
+            ldtk.test_json(playdate, playdate_allocator.?) catch unreachable;
         },
         else => {},
     }
     return 0;
-}
-
-fn test_json(playdate: *pdapi.PlaydateAPI) void {
-    const file_name = "/Data/com.davidmedin.rogue/test.json"; // /Disk
-    var stats: pdapi.FileStat = undefined;
-    if (playdate.file.stat(file_name, &stats) != 0) {
-        unreachable;
-    }
-    var file: *pdapi.SDFile = playdate.file.open(file_name, pdapi.FILE_READ).?;
-    defer if (playdate.file.close(file) != 0) {
-        unreachable;
-    };
-
-    // var json_string: [stats.size]u8 = undefined;
-    var json_string: [*]u8 = @ptrCast(playdate.system.realloc(null, stats.size).?);
-    defer _ = playdate.system.realloc(json_string, 0);
-    if (playdate.file.read(file, json_string, stats.size) != 0) {
-        unreachable;
-    }
-
-    std.log.debug("json: {s}", .{json_string[0..stats.size]});
-    // json.Parser.init()
-
 }
 
 fn init_ecs(playdate: *pdapi.PlaydateAPI) !void {
@@ -157,7 +134,7 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
             std.log.warn("Dropping frames! {} leftover seconds, {} dropped frames.", .{ time_leftovers, std.math.floor(time_leftovers / tick_length) });
         }
         playdate.system.resetElapsedTime();
-        std.log.debug("Tick! ({})", .{time_leftovers});
+        // std.log.debug("Tick! ({})", .{time_leftovers});
         tick(playdate) catch unreachable;
     }
 
