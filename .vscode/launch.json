@@ -1,0 +1,37 @@
+{
+    "configurations": [
+    {
+        "type": "lldb",
+        "request": "launch",
+        "name": "Debug Playdate",
+        "program": "PlaydateSimulator",
+        "args": [
+            "${workspaceFolder}/zig-out/roguelike.pdx"
+        ],
+        "cwd": "${workspaceFolder}",
+        "preLaunchTask": "Build Zig",
+        "presentation": {
+            "hidden": false,
+            "group": "",
+            "order": 1
+        },
+    },
+    {
+        "type": "lldb",
+        "request": "launch",
+        "name": "Test Zig File",
+        "program": "${workspaceFolder}/zig-out/${fileBasenameNoExtension}",
+        // "args": [
+        //     "${workspaceFolder}/zig-out/roguelike.pdx"
+        // ],
+        "cwd": "${workspaceFolder}",
+        "preLaunchTask": "Build Test Zig",
+        "presentation": {
+            "hidden": false,
+            "group": "",
+            "order": 1
+        },
+    }
+    ]
+
+}
