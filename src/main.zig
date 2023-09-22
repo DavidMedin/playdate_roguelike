@@ -6,7 +6,6 @@ const std = @import("std");
 
 const pdapi = @import("playdate.zig");
 const ecs = @import("ecs");
-const ldtk = @import("ldtk.zig");
 
 const image = @import("image.zig");
 const controls = @import("controls.zig");
@@ -97,7 +96,6 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
             playdate.system.setUpdateCallback(update_and_render, playdate);
             playdate.system.resetElapsedTime();
             tick(playdate) catch unreachable;
-            ldtk.test_json(playdate, playdate_allocator.?) catch unreachable;
         },
         else => {},
     }
