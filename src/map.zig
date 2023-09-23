@@ -1,5 +1,6 @@
 const std = @import("std");
 const pdapi = @import("playdate.zig");
+const transform = @import("transform.zig");
 
 const BLOCK_SIZE = 16;
 const Rect = struct {
@@ -11,43 +12,42 @@ const Rect = struct {
 
 pub const Map = struct {
     const Self = @This();
+    const MAP_WIDTH = 17;
+    const MAP_HEIGHT = 10;
     const id_map = [_]u32{
-1,2,2,2,2,2,2,3, 0,0,0,0,0,0, 1,2,3,
-4,0,0,0,0,0,0,5, 0,0,0,0,0,0, 4,0,5,
-4,0,0,0,0,0,0,9, 2,2,2,2,2,11,4,0,5,
-4,0,0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,5,
-4,0,0,0,0,0,0,10,7,7,7,7,7,12,4,0,5,
-6,7,7,7,7,7,7,8 ,0,0,0,0,0,0, 6,7,8 
+0 ,1 ,1 ,1 ,1 ,1 ,2 ,3 ,3 ,3 ,3 ,3 ,3, 3, 3 ,3, 3 ,
+6 ,7 ,7 ,7 ,7 ,7 ,8 ,3 ,3 ,3 ,3 ,0 ,1, 1, 1 ,1, 2 ,
+6 ,7 ,7 ,7 ,7 ,7 ,8 ,3 ,3 ,3 ,3 ,6 ,7, 7 ,7 ,7 ,8 ,
+6 ,7 ,7 ,7 ,7 ,7 ,8 ,3 ,3 ,3 ,3 ,6 ,7, 7 ,7 ,7 ,8 ,
+6 ,7 ,7 ,7 ,7 ,7 ,15,1 ,1 ,1 ,1 ,16,7, 7 ,7 ,7 ,8 ,
+6 ,7 ,7 ,7 ,7 ,7 ,7 ,7 ,7 ,7 ,7 ,7 ,7, 7 ,7 ,7 ,8 ,
+6 ,7 ,7 ,7 ,7 ,7 ,9 ,13,13,13,13,10,7, 7 ,7 ,7 ,8 ,
+6 ,7 ,7 ,7 ,7 ,7 ,8 ,3 ,3 ,3 ,3 ,6 ,7, 7 ,7 ,7 ,8 ,
+6 ,7 ,7 ,7 ,7 ,7 ,8 ,3 ,3 ,3 ,3 ,6 ,7, 7 ,7 ,7 ,8 ,
+12,13,13,13,13,13,14,3 ,3 ,3 ,3 ,12,13,13,13,13,14,
 };
-    spritesheet_image : *pdapi.LCDBitmap,
-    block_locations : []Rect,
+    spritesheet_image : *pdapi.LCDBitmapTable,
 
     pub fn init(playdate : *pdapi.PlaydateAPI) Self {
-        const locations = [_]Rect {
-            .{.x = 16, .y = 16},
-            .{.x = 0,.y=0},
-            .{.x = 16, .y = 0},
-            .{.x = 32, .y = 0},
-            .{.x = 0, .y = 16},
-            .{.x = 32, .y = 16},
-            .{.x = 0, .y = 32},
-            .{.x = 16, .y = 32},
-            .{.x = 32, .y = 32},
-            .{.x = 48, .y = 32},
-            .{.x = 48, .y = 16},
-            .{.x = 64, .y = 32},
-            .{.x = 64, .y = 16},
-            .{.x = 48, .y = 0} // Full block
-        };
-        _ = locations;
         return .{
-            .spritesheet_image = playdate.graphics.loadBitmap("tilemap", null).?,
+            .spritesheet_image = playdate.graphics.loadBitmapTable("tilemap", null).?,
             
          };
     }
     
-    pub fn draw(self : *Self) void {
-        _ = self;
-        
+    pub fn draw(self : *Self, playdate : *pdapi.PlaydateAPI) void {
+        var x : i32 = 0;
+        while(x < Map.MAP_WIDTH) {
+            var y : i23 = 0;
+            while(y < Map.MAP_HEIGHT){
+                const block_idx : i32 = @intCast(Map.id_map[@intCast( x + y * Map.MAP_WIDTH) ]);
+                const map_offset : transform.Vector = .{.x = 40,.y = 40};
+                const bitmap : *pdapi.LCDBitmap = playdate.graphics.getTableBitmap(self.*.spritesheet_image, @intCast(block_idx)).?;
+                const block_pos : transform.Vector = .{.x = map_offset.x + x * 16, .y = map_offset.y + y * 16};
+                playdate.graphics.drawBitmap(bitmap,block_pos.x, block_pos.y, pdapi.LCDBitmapFlip.BitmapUnflipped);
+                y += 1;    
+            }
+            x += 1;
+        }
     }
 };

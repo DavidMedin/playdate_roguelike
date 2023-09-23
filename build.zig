@@ -1,6 +1,5 @@
 const std = @import("std");
 const builtin = @import("builtin");
-
 pub fn build(b: *std.build.Builder) !void {
     const optimize = b.standardOptimizeOption(.{});
 
@@ -51,7 +50,7 @@ pub fn build(b: *std.build.Builder) !void {
     }
 
     // Install Step
-    const copy_assets = b.addSystemCommand(&.{ "cp", "assets/playdate_image.png", "assets/pdxinfo", "assets/icon.png", "assets/map.ldtk", "assets/test.json", "zig-out/Source" });
+    const copy_assets = b.addSystemCommand(&.{ "cp", "assets/playdate_image.png", "assets/pdxinfo", "assets/icon.png", "assets/tilemap-table-16-16.png", "zig-out/Source" });
     copy_assets.step.dependOn(previous_step);
     const pdc_path = try std.fmt.allocPrint(b.allocator, "{s}/bin/pdc{s}", .{
         playdate_sdk_path,

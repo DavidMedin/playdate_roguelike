@@ -7,6 +7,10 @@ const std = @import("std");
 const pdapi = @import("playdate.zig");
 const ecs = @import("ecs");
 
+// Helpers
+const map = @import("map.zig");
+
+// Components
 const image = @import("image.zig");
 const controls = @import("controls.zig");
 const transform = @import("transform.zig");
@@ -79,6 +83,7 @@ pub const std_options = struct {
 };
 
 var world: ecs.ECS = undefined;
+var world_map : map.Map = undefined;
 
 pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEvent, arg: u32) callconv(.C) c_int {
     _ = arg;
@@ -92,17 +97,20 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
 
             const ecs_config = ecs.ECSConfig{ .component_allocator = playdate_allocator.? };
             world = ecs.ECS.init(ecs_config) catch unreachable;
-            init_ecs(playdate) catch unreachable;
+            init(playdate) catch unreachable;
+            
             playdate.system.setUpdateCallback(update_and_render, playdate);
-            playdate.system.resetElapsedTime();
-            tick(playdate) catch unreachable;
         },
         else => {},
     }
     return 0;
 }
 
-fn init_ecs(playdate: *pdapi.PlaydateAPI) !void {
+fn init(playdate: *pdapi.PlaydateAPI) !void {
+    // load map things
+    world_map = map.Map.init(playdate);
+
+    // ECS things
     const playdate_image = playdate.graphics.loadBitmap("playdate_image", null).?;
 
     // Brain entity
@@ -118,6 +126,10 @@ fn init_ecs(playdate: *pdapi.PlaydateAPI) !void {
 
     try world.add_component(player_body, "image", image.Image{ .bitmap = playdate_image });
     try world.add_component(player_body, "transform", transform.Transform{ .x = 4, .y = 4 });
+
+    // Time stuff
+    playdate.system.resetElapsedTime();
+    tick(playdate) catch unreachable;
 }
 
 var time_leftovers: f32 = 0;
@@ -160,6 +172,7 @@ fn tick(playdate: *pdapi.PlaydateAPI) !void {
     }
     // world.print_info();
 
+    world_map.draw(playdate);
     // Iterate through all images and draw them
     var image_iter = ecs.data_iter(.{ .image = image.Image, .transform = transform.Transform }).init(&world);
     while (image_iter.next()) |slice| {
