@@ -1,5 +1,8 @@
 const std = @import("std");
 const pdapi = @import("playdate.zig");
+
+const context = @import("context.zig");
+
 const transform = @import("transform.zig");
 
 const BLOCK_SIZE = 16;
@@ -26,24 +29,34 @@ pub const Map = struct {
 6 ,7 ,7 ,7 ,7 ,7 ,8 ,3 ,3 ,3 ,3 ,6 ,7, 7 ,7 ,7 ,8 ,
 12,13,13,13,13,13,14,3 ,3 ,3 ,3 ,12,13,13,13,13,14,
 };
-    spritesheet_image : *pdapi.LCDBitmapTable,
+    ctx : *context.Context,
 
-    pub fn init(playdate : *pdapi.PlaydateAPI) Self {
+    pub fn init(ctx : *context.Context) Self {
+        // Warning! ctx is not gurenteed to be fully built by this point!
         return .{
-            .spritesheet_image = playdate.graphics.loadBitmapTable("tilemap", null).?,
-            
+            .ctx = ctx            
          };
     }
     
-    pub fn draw(self : *Self, playdate : *pdapi.PlaydateAPI) void {
+    pub fn draw(self : *Self) void {
+        const playdate : *pdapi.PlaydateAPI = self.*.ctx.*.playdate; // Because it is easier :)
+
         var x : i32 = 0;
         while(x < Map.MAP_WIDTH) {
             var y : i23 = 0;
             while(y < Map.MAP_HEIGHT){
+                // Get the ID being rendered by checking that huge array above.
                 const block_idx : i32 = @intCast(Map.id_map[@intCast( x + y * Map.MAP_WIDTH) ]);
-                const map_offset : transform.Vector = .{.x = 40,.y = 40};
-                const bitmap : *pdapi.LCDBitmap = playdate.graphics.getTableBitmap(self.*.spritesheet_image, @intCast(block_idx)).?;
+                
+                // Helper constant
+                const map_offset : transform.Vector = .{.x = 0,.y = 0};
+                
+                // Query what image to render from the global tileset
+                const bitmap : *pdapi.LCDBitmap = playdate.graphics.getTableBitmap(self.*.ctx.*.tileset, @intCast(block_idx)).?;
+                
+                // Calculate where the block goes
                 const block_pos : transform.Vector = .{.x = map_offset.x + x * 16, .y = map_offset.y + y * 16};
+                // Draw!
                 playdate.graphics.drawBitmap(bitmap,block_pos.x, block_pos.y, pdapi.LCDBitmapFlip.BitmapUnflipped);
                 y += 1;    
             }

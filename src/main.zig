@@ -8,6 +8,7 @@ const pdapi = @import("playdate.zig");
 const ecs = @import("ecs");
 
 // Helpers
+const context = @import("context.zig");
 const map = @import("map.zig");
 
 // Components
@@ -18,7 +19,7 @@ const brain = @import("brain.zig");
 const body = @import("body.zig");
 
 // TODO:
-// [] Draw a map from an ID image
+// [x] Draw a map from an ID image
 // [] Collidable walls
 // [] Make GUI framework for menus
 // [] GUI ECS viewer/editor in and/or out of the playdate. HARD
@@ -27,7 +28,6 @@ const body = @import("body.zig");
 // [] collidable chest with items
 // [] damage!
 
-var global_playdate: ?*pdapi.PlaydateAPI = null;
 
 fn component_allocator(playdate_api: *pdapi.PlaydateAPI) std.mem.Allocator {
     return std.mem.Allocator{
@@ -64,7 +64,11 @@ fn component_allocator(playdate_api: *pdapi.PlaydateAPI) std.mem.Allocator {
         },
     };
 }
-var playdate_allocator: ?std.mem.Allocator = null;
+
+// ===============================================================
+// Don't use these unless your logFn (you're not).
+var GLOBAL_PLAYDATE: ?*pdapi.PlaydateAPI = null;
+var GLOBAL_ALLOCATOR: ?std.mem.Allocator = null;
 
 // This is how you can use std.log.* using the Playdate's logToConsole function. If want to use std.debug.print, cry, seeth, cope, commit nix
 pub const std_options = struct {
@@ -76,39 +80,51 @@ pub const std_options = struct {
         _ = reset;
 
         const prefix = "[" ++ comptime level.asText() ++ "] ";
-        const fmtd_string: [:0]u8 = std.fmt.allocPrintZ(playdate_allocator.?, prefix ++ format, args) catch unreachable;
-        nosuspend global_playdate.?.*.system.logToConsole(@ptrCast(fmtd_string));
-        playdate_allocator.?.free(fmtd_string);
+        const fmtd_string: [:0]u8 = std.fmt.allocPrintZ(GLOBAL_ALLOCATOR.?, prefix ++ format, args) catch unreachable;
+        nosuspend GLOBAL_PLAYDATE.?.*.system.logToConsole(@ptrCast(fmtd_string));
+        GLOBAL_ALLOCATOR.?.free(fmtd_string);
     }
 };
+// ===============================================================
 
-var world: ecs.ECS = undefined;
-var world_map : map.Map = undefined;
+// var world: ecs.ECS = undefined;
+// var world_map : map.Map = undefined;
 
 pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEvent, arg: u32) callconv(.C) c_int {
     _ = arg;
     switch (event) {
         .EventInit => {
-            global_playdate = playdate;
-            playdate_allocator = component_allocator(playdate);
+            GLOBAL_PLAYDATE = playdate;
+            GLOBAL_ALLOCATOR = component_allocator(playdate);
+
+            const ecs_config = ecs.ECSConfig{ .component_allocator = GLOBAL_ALLOCATOR.? };
+            var ctx : *context.Context = GLOBAL_ALLOCATOR.?.create(context.Context) catch unreachable; // allocate a context. This will never be free'd
+            ctx.* =  context.Context{
+                .playdate = playdate,
+                .allocator = component_allocator(playdate),
+                .world = ecs.ECS.init(ecs_config) catch unreachable,
+                .map = map.Map.init(ctx), // Kinda sus, but does work. As long as map.init does't assume .tileset has been written to...
+                .tileset = playdate.graphics.loadBitmapTable("tilemap", null).?
+            };
             // g_playdate_image = playdate.graphics.loadBitmap("playdate_image", null).?;
             const font = playdate.graphics.loadFont("/System/Fonts/Asheville-Sans-14-Bold.pft", null).?;
             playdate.graphics.setFont(font);
 
-            const ecs_config = ecs.ECSConfig{ .component_allocator = playdate_allocator.? };
-            world = ecs.ECS.init(ecs_config) catch unreachable;
-            init(playdate) catch unreachable;
+            init(ctx) catch unreachable;
             
-            playdate.system.setUpdateCallback(update_and_render, playdate);
+            playdate.system.setUpdateCallback(update, ctx);
+        },
+        .EventTerminate => {
+            // Nothing happens. heh.
         },
         else => {},
     }
     return 0;
 }
 
-fn init(playdate: *pdapi.PlaydateAPI) !void {
-    // load map things
-    world_map = map.Map.init(playdate);
+fn init(ctx : *context.Context) !void {
+    const playdate = ctx.*.playdate;
+    const world = &ctx.*.world;
 
     // ECS things
     const playdate_image = playdate.graphics.loadBitmap("playdate_image", null).?;
@@ -129,12 +145,15 @@ fn init(playdate: *pdapi.PlaydateAPI) !void {
 
     // Time stuff
     playdate.system.resetElapsedTime();
-    tick(playdate) catch unreachable;
+    tick(ctx) catch unreachable;
 }
 
 var time_leftovers: f32 = 0;
-fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
-    const playdate: *pdapi.PlaydateAPI = @ptrCast(@alignCast(userdata.?));
+fn update(userdata: ?*anyopaque) callconv(.C) c_int {
+    const ctx: *context.Context = @ptrCast(@alignCast(userdata.?));
+    const playdate = ctx.*.playdate;
+    const world = &ctx.*.world;
+
 
     const tick_length: f32 = 0.25; // In seconds (microsecond accuracy)
     const time: f32 = playdate.system.getElapsedTime();
@@ -145,13 +164,24 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
         }
         playdate.system.resetElapsedTime();
         // std.log.debug("Tick! ({})", .{time_leftovers});
-        tick(playdate) catch unreachable;
+        tick(ctx) catch unreachable;
     }
 
     // Iterate through all 'Controllable's.
-    var move_iter = ecs.data_iter(.{ .controls = controls.Controls }).init(&world);
+    var move_iter = ecs.data_iter(.{ .controls = controls.Controls }).init(world);
     while (move_iter.next()) |slice| {
         controls.update_controls(playdate, slice.controls);
+    }
+
+    // Drawing
+    ctx.*.playdate.graphics.clear(@intFromEnum(pdapi.LCDSolidColor.ColorWhite));
+
+    ctx.*.map.draw();
+    // Iterate through all images and draw them
+    var image_iter = ecs.data_iter(.{ .image = image.Image, .transform = transform.Transform }).init(&ctx.*.world);
+    while (image_iter.next()) |slice| {
+        std.debug.assert(slice.entity != null);
+        slice.image.draw(ctx, .{ .x = slice.transform.*.x, .y = slice.transform.*.y });
     }
 
     // returning 1 signals to the OS to draw the frame.
@@ -159,24 +189,14 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
     return 1;
 }
 
-fn tick(playdate: *pdapi.PlaydateAPI) !void {
-    const to_draw = "Hello from Zig!";
+fn tick(ctx: *context.Context) !void {
+    // const to_draw = "Hello from Zig!";
 
-    playdate.graphics.clear(@intFromEnum(pdapi.LCDSolidColor.ColorWhite));
-    const pixel_width = playdate.graphics.drawText(to_draw, to_draw.len, .UTF8Encoding, 0, 0);
-    _ = pixel_width;
 
-    var move_iter = ecs.data_iter(.{ .controls = controls.Controls, .brain = brain.Brain }).init(&world);
+    var move_iter = ecs.data_iter(.{ .controls = controls.Controls, .brain = brain.Brain }).init(&ctx.*.world);
     while (move_iter.next()) |slice| {
-        controls.update_movement(&world, slice.controls, slice.brain);
+        controls.update_movement(&ctx.*.world, slice.controls, slice.brain);
     }
-    // world.print_info();
 
-    world_map.draw(playdate);
-    // Iterate through all images and draw them
-    var image_iter = ecs.data_iter(.{ .image = image.Image, .transform = transform.Transform }).init(&world);
-    while (image_iter.next()) |slice| {
-        std.debug.assert(slice.entity != null);
-        slice.image.draw(playdate, .{ .x = slice.transform.*.x, .y = slice.transform.*.y });
-    }
+
 }
