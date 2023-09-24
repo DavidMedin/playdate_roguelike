@@ -127,7 +127,8 @@ fn init(ctx : *context.Context) !void {
     const world = &ctx.*.world;
 
     // ECS things
-    const playdate_image = playdate.graphics.loadBitmap("playdate_image", null).?;
+    // const playdate_image = playdate.graphics.loadBitmap("playdate_image", null).?;
+    const playdate_image = playdate.graphics.getTableBitmap(ctx.*.tileset,4).?; // Index 5 is the person sprite
 
     // Brain entity
     const player_brain: ecs.Entity = try world.new_entity();

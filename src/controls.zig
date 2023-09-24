@@ -7,8 +7,13 @@ const brain = @import("brain.zig");
 
 pub const Controls = struct {
     const Self = @This();
+    pressed_this_frame : bool = false,
     movement: pdapi.PDButtons,
 };
+
+// TODO:
+// maybe remove diagonals
+// left+right in one tick should maybe cancel out
 
 pub fn update_movement(world: *ecs.ECS, entity_controls: *Controls, entity_brain: *brain.Brain) void {
     const entity_body: ecs.Entity = entity_brain.*.body;
@@ -27,7 +32,8 @@ pub fn update_movement(world: *ecs.ECS, entity_controls: *Controls, entity_brain
     if (move_when & pdapi.BUTTON_DOWN != 0) {
         entity_transform.*.y += 1;
     }
-    entity_controls.*.movement = 0;
+    // entity_controls.*.movement = 0;
+    entity_controls.*.pressed_this_frame = false;
 }
 
 pub fn update_controls(playdate: *pdapi.PlaydateAPI, entity_controls: *Controls) void {
@@ -35,5 +41,12 @@ pub fn update_controls(playdate: *pdapi.PlaydateAPI, entity_controls: *Controls)
     var released: pdapi.PDButtons = 0;
     var current: pdapi.PDButtons = 0;
     playdate.system.getButtonState(&current, &pressed, &released);
-    entity_controls.*.movement = current;
+    if(pressed != 0) {
+        entity_controls.*.pressed_this_frame = true;
+    }
+    if(current != 0) {
+        entity_controls.*.movement = current;
+    }else if( entity_controls.*.pressed_this_frame == false ) {
+        entity_controls.*.movement = 0;
+    }
 }
