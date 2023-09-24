@@ -1,6 +1,7 @@
 const std = @import("std");
 const ecs = @import("ecs");
 const pdapi = @import("playdate.zig");
+const context = @import("context.zig");
 
 const transform = @import("transform.zig");
 const brain = @import("brain.zig");
@@ -15,23 +16,34 @@ pub const Controls = struct {
 // maybe remove diagonals
 // left+right in one tick should maybe cancel out
 
-pub fn update_movement(world: *ecs.ECS, entity_controls: *Controls, entity_brain: *brain.Brain) void {
+fn input_direction(direction : pdapi.PDButtons) transform.Vector {
+    var new_vector = transform.Vector{.x = 0, .y = 0};
+    if (direction & pdapi.BUTTON_LEFT != 0) {
+    new_vector.x -= 1;
+    }
+    if (direction & pdapi.BUTTON_RIGHT != 0) {
+        new_vector.x += 1;
+    }
+    if (direction & pdapi.BUTTON_UP != 0) {
+        new_vector.y -= 1;
+    }
+    if (direction & pdapi.BUTTON_DOWN != 0) {
+        new_vector.y += 1;
+    }
+    return new_vector;
+}
+
+pub fn update_movement(world: *ecs.ECS, ctx : *context.Context, entity_controls: *Controls, entity_brain: *brain.Brain) void {
     const entity_body: ecs.Entity = entity_brain.*.body;
     var entity_transform: *transform.Transform = (world.get_component(entity_body, "transform", transform.Transform) catch unreachable).?;
-    var move_when = entity_controls.*.movement;
 
-    if (move_when & pdapi.BUTTON_LEFT != 0) {
-        entity_transform.*.x -= 1;
+    const direction = input_direction(entity_controls.*.movement);
+    const move_to = entity_transform.*.plus(direction);
+    if(!ctx.*.map.collides( move_to )){
+        // Doesn't collide! move.
+        entity_transform.* = move_to;
     }
-    if (move_when & pdapi.BUTTON_RIGHT != 0) {
-        entity_transform.*.x += 1;
-    }
-    if (move_when & pdapi.BUTTON_UP != 0) {
-        entity_transform.*.y -= 1;
-    }
-    if (move_when & pdapi.BUTTON_DOWN != 0) {
-        entity_transform.*.y += 1;
-    }
+
     // entity_controls.*.movement = 0;
     entity_controls.*.pressed_this_frame = false;
 }

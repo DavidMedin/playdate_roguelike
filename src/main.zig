@@ -20,7 +20,7 @@ const body = @import("body.zig");
 
 // TODO:
 // [x] Draw a map from an ID image
-// [] Collidable walls
+// [x] Collidable walls
 // [] Make GUI framework for menus
 // [] GUI ECS viewer/editor in and/or out of the playdate. HARD
 // [] Inventory menu
@@ -196,7 +196,7 @@ fn tick(ctx: *context.Context) !void {
 
     var move_iter = ecs.data_iter(.{ .controls = controls.Controls, .brain = brain.Brain }).init(&ctx.*.world);
     while (move_iter.next()) |slice| {
-        controls.update_movement(&ctx.*.world, slice.controls, slice.brain);
+        controls.update_movement(&ctx.*.world, ctx, slice.controls, slice.brain);
     }
 
 

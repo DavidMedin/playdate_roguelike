@@ -29,6 +29,7 @@ pub const Map = struct {
 6 ,7 ,7 ,7 ,7 ,7 ,8 ,3 ,3 ,3 ,3 ,6 ,7, 7 ,7 ,7 ,8 ,
 12,13,13,13,13,13,14,3 ,3 ,3 ,3 ,12,13,13,13,13,14,
 };
+    const NOT_COLLIDABLE = [_]i32{7};
     ctx : *context.Context,
 
     pub fn init(ctx : *context.Context) Self {
@@ -36,6 +37,18 @@ pub const Map = struct {
         return .{
             .ctx = ctx            
          };
+    }
+
+    pub fn collides(self : *Self, position : transform.Vector) bool {
+        _ = self;
+        // Get the ID being rendered by checking that huge array above.
+        const block_idx : i32 = @intCast(Map.id_map[@intCast( position.x + position.y * Map.MAP_WIDTH) ]);
+        for(Map.NOT_COLLIDABLE) |not_collidable| {
+            if(block_idx == not_collidable) {
+                return false;
+            }
+        }
+        return true;
     }
     
     pub fn draw(self : *Self) void {
