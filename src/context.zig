@@ -9,6 +9,6 @@ pub const Context = struct {
     allocator : std.mem.Allocator,
 
     world : ecs.ECS,
-    map : map.Map,
-    tileset : *pdapi.LCDBitmapTable
+    // map : map.Map,
+    // tileset : *pdapi.LCDBitmapTable
 };

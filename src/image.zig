@@ -14,9 +14,13 @@ pub fn world_to_screen(vector: transform.Vector) transform.Vector {
 
 pub const Image = struct {
     const Self = @This();
-    bitmap: *pdapi.LCDBitmap,
+    // bitmap: *pdapi.LCDBitmap,
+    dummy_data : i32,
     pub fn draw(self: *Self,ctx : *context.Context, vector: transform.Vector) void {
+        _ = ctx;
+        _ = self;
         const screen_vector = world_to_screen(vector);
-        ctx.*.playdate.graphics.drawBitmap(self.*.bitmap, screen_vector.x, screen_vector.y, .BitmapUnflipped);
+        _ = screen_vector;
+        // ctx.*.playdate.graphics.drawBitmap(self.*.bitmap, screen_vector.x, screen_vector.y, .BitmapUnflipped);
     }
 };

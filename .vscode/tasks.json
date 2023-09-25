@@ -8,7 +8,8 @@
         "type": "shell",
         "command": "zig",
         "args": [
-            "build"
+            "build",
+            "-freference-trace"
         ],
         "presentation": {
           "reveal": "silent",

@@ -2,3 +2,4 @@ zig-out
 zig-cache
 *.swp
 .DS_Store
+third_party

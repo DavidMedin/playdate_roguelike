@@ -5,7 +5,8 @@ pub fn build(b: *std.build.Builder) !void {
 
     const pdx_file_name = "roguelike.pdx";
 
-    const ecs_mod = b.addModule("ecs", .{ .source_file = .{ .path = "../zig-ecs/src/main.zig" }, .dependencies = &.{} });
+    const ecs_mod = b.addModule("ecs", .{ .source_file = .{ .path = "../zig-ecs/src/ecs.zig" }, .dependencies = &.{} });
+    // const trace_mod = b.addModule("trace", .{ .source_file = .{ .path = "third_party/trace.zig/src/main.zig" }, .dependencies = &.{} });
 
     const lib = b.addSharedLibrary(.{
         .name = "pdex",
@@ -15,7 +16,7 @@ pub fn build(b: *std.build.Builder) !void {
     });
 
     lib.addModule("ecs", ecs_mod);
-    // main_tests.addModule("src", src_module);
+    // lib.addModule("trace", trace_mod);
 
     const output_path = "Source";
     const lib_step = b.addInstallArtifact(lib, .{});
@@ -27,6 +28,7 @@ pub fn build(b: *std.build.Builder) !void {
     });
     const game_elf = b.addExecutable(.{ .name = "pdex.elf", .root_source_file = .{ .path = "src/main.zig" }, .target = playdate_target, .optimize = optimize });
     game_elf.addModule("ecs", ecs_mod);
+    // game_elf.addModule("trace", trace_mod);
 
     // const ecs_mod = b.createModule();
     // const ecs_mod: std.build.AddModuleOptions = .{ .name = "ecs", .source_file = .{ .path = "../zig-ecs/src/main.zig" }, .dependencies = &.{} };

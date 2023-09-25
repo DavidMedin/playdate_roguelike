@@ -18,15 +18,16 @@ const transform = @import("transform.zig");
 const brain = @import("brain.zig");
 const body = @import("body.zig");
 
-// TODO:
+// TODO: (Make making it a game as fast as possible)
 // [x] Draw a map from an ID image
 // [x] Collidable walls
+// [] Make enemies
+// [] damage!
 // [] Make GUI framework for menus
 // [] GUI ECS viewer/editor in and/or out of the playdate. HARD
 // [] Inventory menu
 // [] Pick up item on floor
 // [] collidable chest with items
-// [] damage!
 
 
 fn component_allocator(playdate_api: *pdapi.PlaydateAPI) std.mem.Allocator {
@@ -98,13 +99,13 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
             GLOBAL_ALLOCATOR = component_allocator(playdate);
 
             const ecs_config = ecs.ECSConfig{ .component_allocator = GLOBAL_ALLOCATOR.? };
-            var ctx : *context.Context = GLOBAL_ALLOCATOR.?.create(context.Context) catch unreachable; // allocate a context. This will never be free'd
+            var ctx : *context.Context = @ptrCast( @alignCast(playdate.system.realloc(null, @sizeOf(context.Context)).?) ); // allocate a context. This will never be free'd
             ctx.* =  context.Context{
                 .playdate = playdate,
                 .allocator = component_allocator(playdate),
                 .world = ecs.ECS.init(ecs_config) catch unreachable,
-                .map = map.Map.init(ctx), // Kinda sus, but does work. As long as map.init does't assume .tileset has been written to...
-                .tileset = playdate.graphics.loadBitmapTable("tilemap", null).?
+                // .map = map.Map.init(ctx), // Kinda sus, but does work. As long as map.init does't assume .tileset has been written to...
+                // .tileset = playdate.graphics.loadBitmapTable("tilemap", null).?
             };
             // g_playdate_image = playdate.graphics.loadBitmap("playdate_image", null).?;
             const font = playdate.graphics.loadFont("/System/Fonts/Asheville-Sans-14-Bold.pft", null).?;
@@ -128,21 +129,46 @@ fn init(ctx : *context.Context) !void {
 
     // ECS things
     // const playdate_image = playdate.graphics.loadBitmap("playdate_image", null).?;
-    const playdate_image = playdate.graphics.getTableBitmap(ctx.*.tileset,4).?; // Index 5 is the person sprite
+    // const player_image = playdate.graphics.getTableBitmap(ctx.*.tileset,4).?; // Index 4 is the person sprite
+    // const enemy_image = playdate.graphics.getTableBitmap(ctx.*.tileset,5).?; // Index 5 is the goblin sprite
 
-    // Brain entity
-    const player_brain: ecs.Entity = try world.new_entity();
-    try world.add_component(player_brain, "brain", brain.Brain{ .reaction_time = 1, .body = undefined });
-    try world.add_component(player_brain, "controls", controls.Controls{ .movement = 0 });
-    var brain_component: *brain.Brain = (try world.get_component(player_brain, "brain", brain.Brain)).?;
+    {
+        // Brain entity
+        const player_brain: ecs.Entity = try world.new_entity();
+        try world.add_component(player_brain, "brain", brain.Brain{ .reaction_time = 1, .body = undefined });
+        try world.add_component(player_brain, "controls", controls.Controls{ .movement = 0 });
+        var brain_component: *brain.Brain = (try world.get_component(player_brain, "brain", brain.Brain)).?;
 
-    // Body entity
-    const player_body: ecs.Entity = try world.new_entity();
-    brain_component.*.body = player_body; // Linking the body to the brain
-    try world.add_component(player_body, "body", body.Body{ .brain = player_brain });
+        // Body entity
+        const player_body: ecs.Entity = try world.new_entity();
+        brain_component.*.body = player_body; // Linking the body to the brain
+        try world.add_component(player_body, "body", body.Body{ .brain = player_brain });
 
-    try world.add_component(player_body, "image", image.Image{ .bitmap = playdate_image });
-    try world.add_component(player_body, "transform", transform.Transform{ .x = 4, .y = 4 });
+        // try world.add_component(player_body, "image", image.Image{ .dummy_data = 3 });
+        try world.add_component(player_body, "transform", transform.Transform{ .x = 4, .y = 4 });
+
+    }
+
+    world.print_info();
+
+    {
+        // Create enemy
+        const enemy_brain: ecs.Entity = try world.new_entity();
+        try world.add_component(enemy_brain, "brain", brain.Brain{ .reaction_time = 2, .body = undefined });
+        try world.add_component(enemy_brain, "controls", controls.Controls{ .movement = 0 });
+        var enemy_brain_component: *brain.Brain = (try world.get_component(enemy_brain, "brain", brain.Brain)).?;
+
+    //     // Body entity
+        const enemy_body: ecs.Entity = try world.new_entity();
+        enemy_brain_component.*.body = enemy_body; // Linking the body to the brain
+        try world.add_component(enemy_body, "body", body.Body{ .brain = enemy_brain });
+        world.print_info();
+
+        // try world.add_component(enemy_body, "image", image.Image{ .dummy_data = 3 });
+        try world.add_component(enemy_body, "transform", transform.Transform{ .x = 4, .y = 6 });
+
+    }
+
 
     // Time stuff
     playdate.system.resetElapsedTime();
@@ -177,13 +203,13 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
     // Drawing
     ctx.*.playdate.graphics.clear(@intFromEnum(pdapi.LCDSolidColor.ColorWhite));
 
-    ctx.*.map.draw();
+    // ctx.*.map.draw();
     // Iterate through all images and draw them
-    var image_iter = ecs.data_iter(.{ .image = image.Image, .transform = transform.Transform }).init(&ctx.*.world);
-    while (image_iter.next()) |slice| {
-        std.debug.assert(slice.entity != null);
-        slice.image.draw(ctx, .{ .x = slice.transform.*.x, .y = slice.transform.*.y });
-    }
+    // var image_iter = ecs.data_iter(.{ .image = image.Image, .transform = transform.Transform }).init(&ctx.*.world);
+    // while (image_iter.next()) |slice| {
+    //     std.debug.assert(slice.entity != null);
+    //     // slice.image.draw(ctx, .{ .x = slice.transform.*.x, .y = slice.transform.*.y });
+    // }
 
     // returning 1 signals to the OS to draw the frame.
     // we always want this frame drawn

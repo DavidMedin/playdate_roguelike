@@ -34,15 +34,16 @@ fn input_direction(direction : pdapi.PDButtons) transform.Vector {
 }
 
 pub fn update_movement(world: *ecs.ECS, ctx : *context.Context, entity_controls: *Controls, entity_brain: *brain.Brain) void {
+    _ = ctx;
     const entity_body: ecs.Entity = entity_brain.*.body;
     var entity_transform: *transform.Transform = (world.get_component(entity_body, "transform", transform.Transform) catch unreachable).?;
 
     const direction = input_direction(entity_controls.*.movement);
     const move_to = entity_transform.*.plus(direction);
-    if(!ctx.*.map.collides( move_to )){
+    // if(!ctx.*.map.collides( move_to )){
         // Doesn't collide! move.
         entity_transform.* = move_to;
-    }
+    // }
 
     // entity_controls.*.movement = 0;
     entity_controls.*.pressed_this_frame = false;
