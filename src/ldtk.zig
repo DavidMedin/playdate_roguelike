@@ -62,10 +62,10 @@ const Tileset = struct {
 
 const Definitions = struct {
     entities: []Entity,
-    // enums: []Enum,
-    // externalEnums: []Enum,
-    // layers: []Layer,
-    // tilesets: []Tileset, // Very important!
+    enums: []Enum,
+    externalEnums: []Enum,
+    layers: []Layer,
+    tilesets: []Tileset, // Very important!
     // levelFields : []Field, // I think this is only used by the app, so I can ignore this.
 };
 
@@ -78,7 +78,7 @@ const FieldInstance = struct { __identifier: []u8, __tile: ?TilesetRect, __type:
 // can be in an .ldtkl file (still json)
 const Level = struct {
     __neighbours: []Neighbour,
-    // fieldInstances: []FieldInstance,
+    fieldInstances: []FieldInstance,
     identifier: []u8,
     iid: []u8,
     // layerInstances : ?[]
@@ -105,12 +105,12 @@ const LDtk_root = struct {
     externalLevels: bool,
     iid: []u8,
     jsonVersion: []u8,
-    // levels: []Level, // Level
-    // toc: []json.Value,
+    levels: []Level, // Level
+    toc: []json.Value,
     worldGridHeight: ?i32,
     worldGridWidth: ?i32,
     worldLayout: ?[]u8, // one of Free, GridVania, LinearHorizontal, LinearVertical
-    // worlds: []World,
+    worlds: []World,
 };
 
 pub fn test_json(playdate: *pdapi.PlaydateAPI, allocator: std.mem.Allocator) !void {

@@ -10,6 +10,7 @@ const ecs = @import("ecs");
 // Helpers
 const context = @import("context.zig");
 const map = @import("map.zig");
+const ldtk = @import("ldtk.zig");
 
 // Components
 const image = @import("image.zig");
@@ -17,16 +18,20 @@ const controls = @import("controls.zig");
 const transform = @import("transform.zig");
 const brain = @import("brain.zig");
 const body = @import("body.zig");
+const ai = @import("ai.zig");
 
-// TODO:
+// TODO: Gameplay
 // [x] Draw a map from an ID image
 // [x] Collidable walls
-// [] Make GUI framework for menus
-// [] GUI ECS viewer/editor in and/or out of the playdate. HARD
 // [] Inventory menu
 // [] Pick up item on floor
 // [] collidable chest with items
 // [] damage!
+
+// TODO: Debugging
+// [] Make GUI framework for menus
+// [] GUI ECS viewer/editor in and/or out of the playdate. HARD
+// [] Traceing. Use trace.zig - need to make frakenstein to use playdate api instead of std.os
 
 
 // ===============================================================
@@ -51,16 +56,18 @@ pub const std_options = struct {
 };
 // ===============================================================
 
-
+const ALLOC_PRINT = false;
 fn component_allocator(playdate_api: *pdapi.PlaydateAPI) std.mem.Allocator {
     return std.mem.Allocator{
         .ptr = playdate_api,
         .vtable = &std.mem.Allocator.VTable{
             .alloc = struct {
                 pub fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
-                    // std.log.debug("Alloc : len : {}, ptr_align : {}, red_addr : {}", .{len,ptr_align,ret_addr});
-                    GLOBAL_PLAYDATE.?.*.system.logToConsole("Alloc : len : %p, ptr_align : %d, ret_addr : %p\n", len, ptr_align, ret_addr);
+                    if(ALLOC_PRINT) {
+                        GLOBAL_PLAYDATE.?.*.system.logToConsole("Alloc : len : %p, ptr_align : %d, ret_addr : %p\n", len, ptr_align, ret_addr);
+                    }
                     const playdate: *pdapi.PlaydateAPI = @ptrCast(@alignCast(ctx));
+
                     // TODO: Don't just throw away the ptr_align thing.
                     return @ptrCast(playdate.system.realloc(null, len));
                 }
@@ -68,29 +75,18 @@ fn component_allocator(playdate_api: *pdapi.PlaydateAPI) std.mem.Allocator {
             .resize = struct {
                 pub fn resize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
                     _ = ctx;
-                    GLOBAL_PLAYDATE.?.*.system.logToConsole("Resize : buff_ptr : %p, buff_len : %d, new_len : %d, ret_addr : %p\n", buf.ptr,buf.len,buf_align,new_len,ret_addr);
-                    // const playdate: *pdapi.PlaydateAPI = @ptrCast(@alignCast(ctx)); 
-                    // const maybe_new_addr : ?*anyopaque = playdate.system.realloc(buf.ptr, new_len);
-                    // if(maybe_new_addr == null) {
-                    //     unreachable;
-                    // }
-                    // const new_addr = maybe_new_addr.?;
-                    // if (new_addr == @as(*anyopaque, buf.ptr)) {
-                    //     return true;
-                    // } else {
-                    //     _ = playdate.system.realloc(new_addr, 0);
-                    //     return false;
-                    // }
+                    if(ALLOC_PRINT) {
+                        GLOBAL_PLAYDATE.?.*.system.logToConsole("Resize : buff_ptr : %p, buff_len : %d, new_len : %d, ret_addr : %p\n", buf.ptr,buf.len,buf_align,new_len,ret_addr);
+                    }
                     return false; // Playdate doesn't have a function to *attempt* to resize without moving. It will just allocate it.
                     // So, lets hope that every user of .resize will have a fallback 'free' and 'alloc'.
                 }
             }.resize,
             .free = struct {
                 pub fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
-                    // std.log.debug("Free : buff_ptr : {*}. buff_len : {}, buf_align : {}, ret_addr : {}", .{buf.ptr,buf.len,buf_align,ret_addr});
-                    GLOBAL_PLAYDATE.?.*.system.logToConsole("Free : buff_ptr : %p, buff_len : %d, ret_addr : %p\n", buf.ptr,buf.len,buf_align,ret_addr);
-                    
-
+                    if(ALLOC_PRINT) {
+                        GLOBAL_PLAYDATE.?.*.system.logToConsole("Free : buff_ptr : %p, buff_len : %d, ret_addr : %p\n", buf.ptr,buf.len,buf_align,ret_addr);
+                    }
                     const playdate: *pdapi.PlaydateAPI = @ptrCast(@alignCast(ctx));
                     _ = playdate.system.realloc(buf.ptr, 0);
                 }
@@ -139,40 +135,41 @@ fn init(ctx : *context.Context) !void {
     const world = &ctx.*.world;
 
     // ECS things
-    // const playdate_image = playdate.graphics.loadBitmap("playdate_image", null).?;
-    const hero_image = playdate.graphics.getTableBitmap(ctx.*.tileset,4).?; // Index 5 is the person sprite
-    const goblin_image = playdate.graphics.getTableBitmap(ctx.*.tileset,5).?; // Index 5 is the person sprite
+    const hero_image = playdate.graphics.getTableBitmap(ctx.*.tileset,4).?; // Index 4 is the person sprite
+    const goblin_image = playdate.graphics.getTableBitmap(ctx.*.tileset,5).?; // Index 5 is the goblin sprite
 
-{    // Brain entity
-    const player_brain: ecs.Entity = try world.new_entity();
-    try world.add_component(player_brain, "brain", brain.Brain{ .reaction_time = 1, .body = undefined });
-    try world.add_component(player_brain, "controls", controls.Controls{ .movement = 0 });
-    var brain_component: *brain.Brain = (try world.get_component(player_brain, "brain", brain.Brain)).?;
+    {    // Brain entity
+        const player_brain: ecs.Entity = try world.new_entity();
+        try world.add_component(player_brain, "brain", brain.Brain{ .reaction_time = 1, .body = undefined });
+        try world.add_component(player_brain, "controls", controls.Controls{ .movement = 0 });
+        var brain_component: *brain.Brain = (try world.get_component(player_brain, "brain", brain.Brain)).?;
 
-    // Body entity
-    const player_body: ecs.Entity = try world.new_entity();
-    brain_component.*.body = player_body; // Linking the body to the brain
-    try world.add_component(player_body, "body", body.Body{ .brain = player_brain });
+        // Body entity
+        const player_body: ecs.Entity = try world.new_entity();
+        brain_component.*.body = player_body; // Linking the body to the brain
+        try world.add_component(player_body, "body", body.Body{ .brain = player_brain });
 
-    try world.add_component(player_body, "image", image.Image{ .bitmap = hero_image });
-    try world.add_component(player_body, "transform", transform.Transform{ .x = 4, .y = 4 });
-}
+        try world.add_component(player_body, "image", image.Image{ .bitmap = hero_image });
+        try world.add_component(player_body, "transform", transform.Transform{ .x = 4, .y = 4 });
+        try world.add_component(player_body, "relation", ai.Relation{.in= ai.Relation.HUMAN, .hates = 0, .loves = 0});
+    }
 
-{    // Brain entity
-    const player_brain: ecs.Entity = try world.new_entity();
-    try world.add_component(player_brain, "brain", brain.Brain{ .reaction_time = 1, .body = undefined });
-    try world.add_component(player_brain, "controls", controls.Controls{ .movement = 0 });
-    var brain_component: *brain.Brain = (try world.get_component(player_brain, "brain", brain.Brain)).?;
+    {    // Brain entity
+        const enemy_brain: ecs.Entity = try world.new_entity();
+        try world.add_component(enemy_brain, "brain", brain.Brain{ .reaction_time = 1, .body = undefined });
+        try world.add_component(enemy_brain, "ai", ai.AI{});
+        var brain_component: *brain.Brain = (try world.get_component(enemy_brain, "brain", brain.Brain)).?;
 
-    // // Body entity
-    const player_body: ecs.Entity = try world.new_entity();
-    brain_component.*.body = player_body; // Linking the body to the brain
-    try world.add_component(player_body, "body", body.Body{ .brain = player_brain });
+        // // Body entity
+        const enemy_body: ecs.Entity = try world.new_entity();
+        brain_component.*.body = enemy_body; // Linking the body to the brain
+        try world.add_component(enemy_body, "body", body.Body{ .brain = enemy_brain });
 
-    try world.add_component(player_body, "image", image.Image{ .bitmap = goblin_image });
-    try world.add_component(player_body, "transform", transform.Transform{ .x = 4, .y = 6 });
-}
-    // world.print_info();
+        try world.add_component(enemy_body, "image", image.Image{ .bitmap = goblin_image });
+        try world.add_component(enemy_body, "transform", transform.Transform{ .x = 4, .y = 6 });
+        try world.add_component(enemy_body, "relation", ai.Relation{.in= ai.Relation.GOBLIN, .hates = ai.Relation.HUMAN, .loves = 0});
+
+    }
     // Time stuff
     playdate.system.resetElapsedTime();
     tick(ctx) catch unreachable;
@@ -222,12 +219,19 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
 }
 
 fn tick(ctx: *context.Context) !void {
-    // const to_draw = "Hello from Zig!";
+    {
+        var iter = ecs.data_iter(.{.ai = ai.AI, .brain = brain.Brain}).init(&ctx.*.world);
+        while(iter.next()) |slice| {
+            try ai.move(ctx, slice.ai,slice.brain);
+        }
+    }
 
 
-    var move_iter = ecs.data_iter(.{ .controls = controls.Controls, .brain = brain.Brain }).init(&ctx.*.world);
-    while (move_iter.next()) |slice| {
-        controls.update_movement(&ctx.*.world, ctx, slice.controls, slice.brain);
+    {
+        var move_iter = ecs.data_iter(.{ .controls = controls.Controls, .brain = brain.Brain }).init(&ctx.*.world);
+        while (move_iter.next()) |slice| {
+            controls.update_movement(&ctx.*.world, ctx, slice.controls, slice.brain);
+        }
     }
 
 

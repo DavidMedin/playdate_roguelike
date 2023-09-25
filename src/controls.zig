@@ -16,8 +16,8 @@ pub const Controls = struct {
 // maybe remove diagonals
 // left+right in one tick should maybe cancel out
 
-fn input_direction(direction : pdapi.PDButtons) transform.Vector {
-    var new_vector = transform.Vector{.x = 0, .y = 0};
+fn input_direction(direction : pdapi.PDButtons) transform.Vector(i32) {
+    var new_vector = transform.Vector(i32){.x = 0, .y = 0};
     if (direction & pdapi.BUTTON_LEFT != 0) {
     new_vector.x -= 1;
     }

@@ -39,7 +39,7 @@ pub const Map = struct {
          };
     }
 
-    pub fn collides(self : *Self, position : transform.Vector) bool {
+    pub fn collides(self : *Self, position : transform.Vector(i32)) bool {
         _ = self;
         // Get the ID being rendered by checking that huge array above.
         const block_idx : i32 = @intCast(Map.id_map[@intCast( position.x + position.y * Map.MAP_WIDTH) ]);
@@ -62,13 +62,13 @@ pub const Map = struct {
                 const block_idx : i32 = @intCast(Map.id_map[@intCast( x + y * Map.MAP_WIDTH) ]);
                 
                 // Helper constant
-                const map_offset : transform.Vector = .{.x = 0,.y = 0};
+                const map_offset : transform.Vector(i32) = .{.x = 0,.y = 0};
                 
                 // Query what image to render from the global tileset
                 const bitmap : *pdapi.LCDBitmap = playdate.graphics.getTableBitmap(self.*.ctx.*.tileset, @intCast(block_idx)).?;
                 
                 // Calculate where the block goes
-                const block_pos : transform.Vector = .{.x = map_offset.x + x * 16, .y = map_offset.y + y * 16};
+                const block_pos : transform.Vector(i32) = .{.x = map_offset.x + x * 16, .y = map_offset.y + y * 16};
                 // Draw!
                 playdate.graphics.drawBitmap(bitmap,block_pos.x, block_pos.y, pdapi.LCDBitmapFlip.BitmapUnflipped);
                 y += 1;    
