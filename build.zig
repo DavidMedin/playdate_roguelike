@@ -5,7 +5,7 @@ pub fn build(b: *std.build.Builder) !void {
 
     const pdx_file_name = "roguelike.pdx";
 
-    const ecs_mod = b.addModule("ecs", .{ .source_file = .{ .path = "../zig-ecs/src/main.zig" }, .dependencies = &.{} });
+    const ecs_mod = b.addModule("ecs", .{ .source_file = .{ .path = "../zig-ecs/src/ecs.zig" }, .dependencies = &.{} });
 
     const lib = b.addSharedLibrary(.{
         .name = "pdex",
