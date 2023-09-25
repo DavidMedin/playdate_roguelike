@@ -140,7 +140,7 @@ fn init(ctx : *context.Context) !void {
 
     {    // Brain entity
         const player_brain: ecs.Entity = try world.new_entity();
-        try world.add_component(player_brain, "brain", brain.Brain{ .reaction_time = 1, .body = undefined });
+        try world.add_component(player_brain, "brain", brain.Brain{ .reaction_time = 0, .body = undefined });
         try world.add_component(player_brain, "controls", controls.Controls{ .movement = 0 });
         var brain_component: *brain.Brain = (try world.get_component(player_brain, "brain", brain.Brain)).?;
 
@@ -219,6 +219,13 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
 }
 
 fn tick(ctx: *context.Context) !void {
+    {
+        var iter = ecs.data_iter(.{.brain = brain.Brain}).init(&ctx.*.world);
+        while(iter.next()) |slice| {
+            brain.react(slice.brain);
+        }
+    }
+
     {
         var iter = ecs.data_iter(.{.ai = ai.AI, .brain = brain.Brain}).init(&ctx.*.world);
         while(iter.next()) |slice| {

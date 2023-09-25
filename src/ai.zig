@@ -24,6 +24,11 @@ pub const AI = struct {
     attack_target : ecs.Entity = null,
 };
 pub fn move(ctx : *context.Context, ai : *AI, ent_brain : *brain.Brain) !void {
+    if(ent_brain.*.time_till_react != 0) {
+        // Too slow!
+        return;
+    }
+    
     const my_body_entity : ecs.Entity = ent_brain.*.body;
     const relation : *Relation = (try ctx.*.world.get_component(my_body_entity, "relation", Relation)).?;
     

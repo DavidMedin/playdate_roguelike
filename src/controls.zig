@@ -34,6 +34,11 @@ fn input_direction(direction : pdapi.PDButtons) transform.Vector(i32) {
 }
 
 pub fn update_movement(world: *ecs.ECS, ctx : *context.Context, entity_controls: *Controls, entity_brain: *brain.Brain) void {
+    if(entity_brain.*.time_till_react != 0) {
+        // Too slow!
+        return;
+    }
+
     const entity_body: ecs.Entity = entity_brain.*.body;
     var entity_transform: *transform.Transform = (world.get_component(entity_body, "transform", transform.Transform) catch unreachable).?;
 
