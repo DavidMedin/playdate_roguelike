@@ -5,6 +5,7 @@ const map = @import("map.zig");
 
 const brain = @import("brain.zig");
 const transform = @import("transform.zig");
+const breakable = @import("breakable.zig");
 
 // This defines what others percieve you as. Not who you actually are, I think.
 // This component should only accompany a body, not a brain!
@@ -23,6 +24,9 @@ pub const Relation = struct {
 pub const AI = struct {
     attack_target : ecs.Entity = null,
 };
+
+
+
 pub fn move(ctx : *context.Context, ai : *AI, ent_brain : *brain.Brain) !void {
     if(ent_brain.*.time_till_react != 0) {
         // Too slow!
@@ -55,11 +59,21 @@ pub fn move(ctx : *context.Context, ai : *AI, ent_brain : *brain.Brain) !void {
     // TODO: Pathfinding.
     var my_body_trans : *transform.Transform = (try ctx.*.world.get_component(my_body_entity, "transform", transform.Transform)).?;
     var your_body_trans : *transform.Transform = (try ctx.*.world.get_component(ai.*.attack_target, "transform", transform.Transform)).?;
-    const dir = your_body_trans.*.sub(my_body_trans.*).normalize() catch return; // If normalize errs (vector magnitude was zero) then don't move.
-    const new_trans = dir.plus(my_body_trans.*);
+    const diff = your_body_trans.*.sub(my_body_trans.*);
 
-    const world_map : *map.Map = &ctx.*.map;
-    if(!world_map.*.collides(new_trans)){
-        my_body_trans.* = new_trans;
+    // if the ENEMY is adjacent to me
+    if(try std.math.absInt(diff.x) <= 1 and try std.math.absInt(diff.y) <= 1) {
+        try breakable.take_damage(ctx, ai.*.attack_target);
+    }else {
+        // The ENEMY is not adjacent, I must move in.
+
+        const dir = diff.normalize() catch return; // If normalize errs (vector magnitude was zero) then don't move.
+        const new_trans = dir.plus(my_body_trans.*);
+
+        const world_map : *map.Map = &ctx.*.map;
+        if(!world_map.*.collides(new_trans)){
+            my_body_trans.* = new_trans;
+        }
     }
+    
 }

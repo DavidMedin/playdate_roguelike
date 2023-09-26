@@ -19,6 +19,7 @@ const transform = @import("transform.zig");
 const brain = @import("brain.zig");
 const body = @import("body.zig");
 const ai = @import("ai.zig");
+const breakable = @import("breakable.zig");
 
 // TODO: Gameplay
 // [x] Draw a map from an ID image
@@ -146,12 +147,14 @@ fn init(ctx : *context.Context) !void {
 
         // Body entity
         const player_body: ecs.Entity = try world.new_entity();
+        ctx.*.player_entity = player_body;
         brain_component.*.body = player_body; // Linking the body to the brain
         try world.add_component(player_body, "body", body.Body{ .brain = player_brain });
 
         try world.add_component(player_body, "image", image.Image{ .bitmap = hero_image });
         try world.add_component(player_body, "transform", transform.Transform{ .x = 4, .y = 4 });
         try world.add_component(player_body, "relation", ai.Relation{.in= ai.Relation.HUMAN, .hates = 0, .loves = 0});
+        try world.add_component(player_body, "breakable", breakable.Breakable{.max_health = 4, .health = 4});
     }
 
     {    // Brain entity
@@ -168,6 +171,7 @@ fn init(ctx : *context.Context) !void {
         try world.add_component(enemy_body, "image", image.Image{ .bitmap = goblin_image });
         try world.add_component(enemy_body, "transform", transform.Transform{ .x = 4, .y = 6 });
         try world.add_component(enemy_body, "relation", ai.Relation{.in= ai.Relation.GOBLIN, .hates = ai.Relation.HUMAN, .loves = 0});
+        try world.add_component(enemy_body, "breakable", breakable.Breakable{.max_health = 4, .health = 4});
 
     }
     // Time stuff
@@ -213,6 +217,16 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
         slice.image.draw(ctx, .{ .x = slice.transform.*.x, .y = slice.transform.*.y });
     }
 
+    {
+        const player_breakable : *breakable.Breakable = (world.get_component(ctx.*.player_entity, "breakable", breakable.Breakable) catch unreachable).?;
+        const args = .{player_breakable.*.max_health,player_breakable.*.health};
+        var buffer : [100]u8 = undefined; // Using a buffered format because it is faster. Also, Health : {} is never bigger than 100 characters.
+        const buffer_slice : []u8 = std.fmt.bufPrint(buffer[0..], "Health : {}/{}", args) catch unreachable; // A slice into 'buffer'.
+        const width = playdate.graphics.drawText(buffer_slice.ptr, buffer_slice.len, pdapi.PDStringEncoding.ASCIIEncoding, 2, 240 - 16);
+        _ = width;
+
+    }
+
     // returning 1 signals to the OS to draw the frame.
     // we always want this frame drawn
     return 1;
@@ -237,7 +251,7 @@ fn tick(ctx: *context.Context) !void {
     {
         var move_iter = ecs.data_iter(.{ .controls = controls.Controls, .brain = brain.Brain }).init(&ctx.*.world);
         while (move_iter.next()) |slice| {
-            controls.update_movement(&ctx.*.world, ctx, slice.controls, slice.brain);
+            try controls.update_movement(ctx, slice.controls, slice.brain);
         }
     }
 

@@ -10,5 +10,7 @@ pub const Context = struct {
 
     world : ecs.ECS,
     map : map.Map,
-    tileset : *pdapi.LCDBitmapTable
+    tileset : *pdapi.LCDBitmapTable,
+
+    player_entity : ecs.Entity = null
 };

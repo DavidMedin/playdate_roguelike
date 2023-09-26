@@ -24,6 +24,9 @@ pub fn Vector(comptime grid_type : type) type{
             }
             @panic("Vector.divide can only take a Vector or f32!");
         }
+        pub fn eql(self : Self, other : Self) bool {
+            return self.x == other.x and self.y == other.y;
+        }
 
         pub fn cast(self : Self, comptime to : type) Vector(to) {
             switch(@typeInfo(grid_type)) {
