@@ -239,7 +239,7 @@ fn tick(ctx: *context.Context) !void {
     {
         var iter = ecs.data_iter(.{ .ai = ai.AI, .brain = brain.Brain }).init(&ctx.*.world);
         while (iter.next()) |slice| {
-            try ai.move(ctx, slice.ai, slice.brain);
+            try ai.move(ctx, slice.entity , slice.ai, slice.brain);
         }
     }
 
