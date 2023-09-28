@@ -6,6 +6,8 @@ const context = @import("context.zig");
 const transform = @import("transform.zig");
 const brain = @import("brain.zig");
 const breakable = @import("breakable.zig");
+const body = @import("body.zig");
+const handy = @import("handy.zig");
 
 pub const Controls = struct {
     const Self = @This();
@@ -64,8 +66,25 @@ pub fn update_movement(ctx : *context.Context, entity_controls: *Controls, entit
             // Is there an entity chillin' at this spot?
             const entity_there = get_entity_here(world, move_to);
             if(entity_there != null) { // If so, attack it I suppose
+
+                // This is a big statement. Here is what it says:
+                // If the entity the brain is posessing has a body, try to get its holding item.
+                // If it doesn't have one, damage is 1. If it has one, get its damage.
+                // If the brain is posessing an entity that isn't a Body, deal 1 damage.
+                const damage : u64 = if(try world.get_component(entity_body, "body", body.Body)) |player_body_comp| block: {
+                    if(player_body_comp.*.holding_item == null){
+                        break :block 1; // DEFAULT : 1 damage.
+                    }
+                    if((try world.get_component(player_body_comp.*.holding_item, "handy", handy.Handy))) |handy_comp| {
+                        break :block handy_comp.*.damage;
+                    }
+                    break :block 1;
+                }else block: {
+                    break :block 1;
+                };
+
                 // This garbage attacks. If it errors, ignore it if the entity simple doesn't have the component. Halt and Catch Fire otherwise.
-                breakable.take_damage(ctx, entity_there) catch |err| switch (err) {ecs.ECSError.EntityDoesNotHaveComponent => {}, else => return err};
+                breakable.take_damage(ctx, entity_there, damage) catch |err| switch (err) {ecs.ECSError.EntityDoesNotHaveComponent => {}, else => return err};
             }else{// If not, move there.
                 entity_transform.* = move_to;
             }

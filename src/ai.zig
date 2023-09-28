@@ -71,7 +71,7 @@ pub fn move(ctx : *context.Context, me : ecs.Entity, ai : *AI, ent_brain : *brai
 
     // if the ENEMY is adjacent to me
     if(try std.math.absInt(diff.x) <= 1 and try std.math.absInt(diff.y) <= 1) {
-        try breakable.take_damage(ctx, ai.*.attack_target);
+        try breakable.take_damage(ctx, ai.*.attack_target, 1);
     }else {
         // The ENEMY is not adjacent, I must move in.
 

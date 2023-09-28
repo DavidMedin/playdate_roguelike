@@ -1,3 +1,3 @@
 const ecs = @import("ecs");
 
-pub const Body = struct { brain: ecs.Entity };
+pub const Body = struct { brain: ecs.Entity, holding_item : ecs.Entity = null };

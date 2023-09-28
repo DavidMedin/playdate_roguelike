@@ -20,14 +20,15 @@ const brain = @import("brain.zig");
 const body = @import("body.zig");
 const ai = @import("ai.zig");
 const breakable = @import("breakable.zig");
+const handy = @import("handy.zig");
 
 // TODO: Gameplay
 // [x] Draw a map from an ID image
 // [x] Collidable walls
+// [x] damage!
 // [] Inventory menu
 // [] Pick up item on floor
 // [] collidable chest with items
-// [] damage!
 
 // TODO: Debugging
 // [] Make GUI framework for menus
@@ -145,15 +146,24 @@ fn init(ctx: *context.Context) !void {
         var brain_component: *brain.Brain = (try world.get_component(player_brain, "brain", brain.Brain)).?;
 
         // Body entity
-        const player_body: ecs.Entity = try world.new_entity();
-        ctx.*.player_entity = player_body;
-        brain_component.*.body = player_body; // Linking the body to the brain
-        try world.add_component(player_body, "body", body.Body{ .brain = player_brain });
+        const player_body_ent: ecs.Entity = try world.new_entity();
+        ctx.*.player_entity = player_body_ent;
+        brain_component.*.body = player_body_ent; // Linking the body to the brain
+        try world.add_component(player_body_ent, "body", body.Body{ .brain = player_brain });
 
-        try world.add_component(player_body, "image", image.Image{ .bitmap = hero_image });
-        try world.add_component(player_body, "transform", transform.Transform{ .x = 4, .y = 4 });
-        try world.add_component(player_body, "relation", ai.Relation{ .in = ai.Relation.HUMAN, .hates = 0, .loves = 0 });
-        try world.add_component(player_body, "breakable", breakable.Breakable{ .max_health = 4, .health = 4 });
+        try world.add_component(player_body_ent, "image", image.Image{ .bitmap = hero_image });
+        try world.add_component(player_body_ent, "transform", transform.Transform{ .x = 4, .y = 4 });
+        try world.add_component(player_body_ent, "relation", ai.Relation{ .in = ai.Relation.HUMAN, .hates = 0, .loves = 0 });
+        try world.add_component(player_body_ent, "breakable", breakable.Breakable{ .max_health = 4, .health = 4 });
+
+        const sword_entity : ecs.Entity = block: {
+            const sword_ent = try world.new_entity();
+            try world.add_component(sword_ent, "handy", handy.Handy{.damage = 2});
+            break :block sword_ent;
+        };
+
+        const player_body : *body.Body = (try world.get_component(player_body_ent, "body", body.Body)).?;
+        player_body.*.holding_item = sword_entity;
     }
 
     { // Brain entity

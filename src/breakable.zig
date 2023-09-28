@@ -4,11 +4,14 @@ const context = @import("context.zig");
 
 pub const Breakable = struct { max_health: u64, health: u64 };
 
-pub fn take_damage(ctx: *context.Context, me: ecs.Entity) !void {
+pub fn take_damage(ctx: *context.Context, me: ecs.Entity, damage : u64) !void {
     var mes_breakable: *Breakable = (try ctx.*.world.get_component(me, "breakable", Breakable)).?;
 
-    if (mes_breakable.*.health != 0) {
-        mes_breakable.*.health -= 1;
+    if (mes_breakable.*.health >= damage) {
+        mes_breakable.*.health -= damage;
+    }else {
+        // clamp to 0; we don't have negative numbers!
+        mes_breakable.*.health = 0;
     }
 
     //									  v --- plot armor
