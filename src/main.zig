@@ -44,7 +44,9 @@ const handy = @import("handy.zig");
 // [x] Draw a map from an ID image
 // [x] Collidable walls
 // [x] damage!
-// [] Pick up item on floor (B)
+// [x] Pick up item on floor (B)
+// [] Attack with swipe
+// [] Using item pauses game
 // [] tap vs hold B
 // [] Inventory menu
     // [] exit Inv (B)

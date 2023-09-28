@@ -9,11 +9,13 @@ const breakable = @import("breakable.zig");
 const body = @import("body.zig");
 const handy = @import("handy.zig");
 
+
 pub const Controls = struct {
     const Self = @This();
     dpad_pressed_this_frame : bool = false,
     movement: pdapi.PDButtons = 0,
     button_pressed : pdapi.PDButtons = 0,
+    is_item_ready : bool, // Whether the uesr pressed 'A' and is waiting for more input.
 };
 
 // TODO:
