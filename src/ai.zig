@@ -6,6 +6,7 @@ const map = @import("map.zig");
 const brain = @import("brain.zig");
 const transform = @import("transform.zig");
 const breakable = @import("breakable.zig");
+const body = @import("body.zig");
 
 // This defines what others percieve you as. Not who you actually are, I think.
 // This component should only accompany a body, not a brain!
@@ -71,7 +72,8 @@ pub fn move(ctx : *context.Context, me : ecs.Entity, ai : *AI, ent_brain : *brai
 
     // if the ENEMY is adjacent to me
     if(try std.math.absInt(diff.x) <= 1 and try std.math.absInt(diff.y) <= 1) {
-        try breakable.take_damage(ctx, ai.*.attack_target, 1);
+        const damage : u64 = try body.get_item_damage(ctx, my_body_entity);
+        try breakable.take_damage(ctx, ai.*.attack_target, damage);
     }else {
         // The ENEMY is not adjacent, I must move in.
 

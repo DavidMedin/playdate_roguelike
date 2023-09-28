@@ -181,6 +181,15 @@ fn init(ctx: *context.Context) !void {
         try world.add_component(enemy_body, "transform", transform.Transform{ .x = 4, .y = 6 });
         try world.add_component(enemy_body, "relation", ai.Relation{ .in = ai.Relation.GOBLIN, .hates = ai.Relation.HUMAN, .loves = 0 });
         try world.add_component(enemy_body, "breakable", breakable.Breakable{ .max_health = 4, .health = 4 });
+
+        //  const sword_entity : ecs.Entity = block: {
+        //     const sword_ent = try world.new_entity();
+        //     try world.add_component(sword_ent, "handy", handy.Handy{.damage = 1});
+        //     break :block sword_ent;
+        // };
+
+        // const player_body : *body.Body = (try world.get_component(enemy_body, "body", body.Body)).?;
+        // player_body.*.holding_item = sword_entity;
     }
     // Time stuff
     playdate.system.resetElapsedTime();
