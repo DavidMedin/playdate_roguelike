@@ -55,17 +55,20 @@ pub fn update_movement(ctx : *context.Context, entity_controls: *Controls, entit
     var entity_transform: *transform.Transform = (try world.get_component(entity_body, "transform", transform.Transform)).?;
 
     const direction = input_direction(entity_controls.*.movement);
-    const move_to = entity_transform.*.plus(direction);
-    if(!ctx.*.map.collides( move_to )){
-        // Doesn't collide!
+    
+    if(direction.x != 0 or direction.y != 0) {
+        const move_to = entity_transform.*.plus(direction);
+        if(!ctx.*.map.collides( move_to )){
+            // Doesn't collide!
 
-        // Is there an entity chillin' at this spot?
-        const entity_there = get_entity_here(world, move_to);
-        if(entity_there != null) { // If so, attack it I suppose
-            // This garbage attacks. If it errors, ignore it if the entity simple doesn't have the component. Halt and Catch Fire otherwise.
-            breakable.take_damage(ctx, entity_there) catch |err| switch (err) {ecs.ECSError.EntityDoesNotHaveComponent => {}, else => return err};
-        }else{// If not, move there.
-            entity_transform.* = move_to;
+            // Is there an entity chillin' at this spot?
+            const entity_there = get_entity_here(world, move_to);
+            if(entity_there != null) { // If so, attack it I suppose
+                // This garbage attacks. If it errors, ignore it if the entity simple doesn't have the component. Halt and Catch Fire otherwise.
+                breakable.take_damage(ctx, entity_there) catch |err| switch (err) {ecs.ECSError.EntityDoesNotHaveComponent => {}, else => return err};
+            }else{// If not, move there.
+                entity_transform.* = move_to;
+            }
         }
     }
 
