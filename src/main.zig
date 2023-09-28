@@ -22,13 +22,39 @@ const ai = @import("ai.zig");
 const breakable = @import("breakable.zig");
 const handy = @import("handy.zig");
 
+// Game Usage:
+// DPAD - Movement
+// A - ready item or use item
+// ready item + DPAD - use item direction (maybe crank instead)
+// ready item + B - cancel use item
+// hold B - Open Inventory
+// Over item + B - Pick up item (if no item in hand, put in hand)
+// Inventory + B - close inventory
+
+
+// Inventory:
+// Storage for items.
+// Cursor on Item + A - open options
+// Item Options:
+// - Drop item
+// - equip item
+
+
 // TODO: Gameplay
 // [x] Draw a map from an ID image
 // [x] Collidable walls
 // [x] damage!
+// [] Pick up item on floor (B)
+// [] tap vs hold B
 // [] Inventory menu
-// [] Pick up item on floor
+    // [] exit Inv (B)
+    // [] pause game in inv
+    // [] DPAD nav
+    // [] crank nav?
+    // [] drop item
+    // [] equip item
 // [] collidable chest with items
+// [] openable chest - move items between chest and inv
 
 // TODO: Debugging
 // [] Make GUI framework for menus
