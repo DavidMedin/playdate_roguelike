@@ -11,8 +11,9 @@ const handy = @import("handy.zig");
 
 pub const Controls = struct {
     const Self = @This();
-    pressed_this_frame : bool = false,
-    movement: pdapi.PDButtons,
+    dpad_pressed_this_frame : bool = false,
+    movement: pdapi.PDButtons = 0,
+    button_pressed : pdapi.PDButtons = 0,
 };
 
 // TODO:
@@ -36,17 +37,24 @@ fn input_direction(direction : pdapi.PDButtons) transform.Vector(i32) {
     return new_vector;
 }
 
-fn get_entity_here(world : *ecs.ECS, position : transform.Vector(i32) ) ecs.Entity {
+fn get_entities_here(ctx : *context.Context, position : transform.Vector(i32) ) !?std.ArrayList(ecs.Entity) {
+    const world = &ctx.*.world;
+    var list = std.ArrayList(ecs.Entity).init(ctx.*.allocator);
     var iter = ecs.data_iter(.{.transform = transform.Transform}).init(world);
     while(iter.next()) |slice| {
         if(slice.transform.*.eql(position)) {
-            return slice.entity;
+            // return slice.entity;
+            try list.append(slice.entity);
         }
     }
-    return null;
+    if(list.items.len == 0){
+        list.deinit();
+        return null;
+    }
+    return list;
 }
 
-pub fn update_movement(ctx : *context.Context, entity_controls: *Controls, entity_brain: *brain.Brain) !void {
+pub fn update_movement(ctx : *context.Context, me : ecs.Entity, entity_controls: *Controls, entity_brain: *brain.Brain) !void {
     var world: *ecs.ECS = &ctx.*.world;
     if(entity_brain.*.time_till_react != 0) {
         // Too slow!
@@ -64,21 +72,43 @@ pub fn update_movement(ctx : *context.Context, entity_controls: *Controls, entit
             // Doesn't collide!
 
             // Is there an entity chillin' at this spot?
-            const entity_there = get_entity_here(world, move_to);
-            if(entity_there != null) { // If so, attack it I suppose
+            // const entity_there = get_entity_here(world, move_to);
+            // if(entity_there != null) { // If so, attack it I suppose
 
-                const damage : u64 = try body.get_item_damage(ctx, entity_body);
+            //     const damage : u64 = try body.get_item_damage(ctx, entity_body);
 
-                // This garbage attacks. If it errors, ignore it if the entity simple doesn't have the component. Halt and Catch Fire otherwise.
-                breakable.take_damage(ctx, entity_there, damage) catch |err| switch (err) {ecs.ECSError.EntityDoesNotHaveComponent => {}, else => return err};
-            }else{// If not, move there.
+            //     // This garbage attacks. If it errors, ignore it if the entity simple doesn't have the component. Halt and Catch Fire otherwise.
+            //     breakable.take_damage(ctx, entity_there, damage) catch |err| switch (err) {ecs.ECSError.EntityDoesNotHaveComponent => {}, else => return err};
+            // }else{// If not, move there.
                 entity_transform.* = move_to;
+            // }
+        }
+    }else
+    if(entity_controls.*.button_pressed & pdapi.BUTTON_B != 0) {
+        std.log.info("B has been pressed!",.{});
+        // Is there an entity chillin' at this spot?
+        if(try get_entities_here(ctx, entity_transform.*.plus(direction))) |entities_there| {
+            defer entities_there.deinit(); // Delete the allocated stuff there.
+            // There can be multiple entities in one place. So, pick up the first valid item. Not me though. No self-picking-up.
+            for(entities_there.items) |entity| {
+                if(std.meta.eql(me, entity)){
+                    // Don't pick up yourself.
+                    continue;
+                }
+                if(try world.get_component(entity, "handy", handy.Handy) != null) {
+                    if(try world.get_component(entity_body, "body", body.Body)) |entity_body_body| {
+                        entity_body_body.*.holding_item = entity;
+                        try world.queue_remove_component(entity, "transform");
+                        try world.queue_remove_component(entity, "image");
+                        break;
+                    }// Otherwise, your body can't pick up things. L rip bozo
+                } // otherwise, don't pick up the item; you can't pick it up.
             }
         }
     }
 
-    // entity_controls.*.movement = 0;
-    entity_controls.*.pressed_this_frame = false;
+    entity_controls.*.dpad_pressed_this_frame = false;
+    entity_controls.*.button_pressed = 0;
 }
 
 pub fn update_controls(playdate: *pdapi.PlaydateAPI, entity_controls: *Controls) void {
@@ -86,12 +116,22 @@ pub fn update_controls(playdate: *pdapi.PlaydateAPI, entity_controls: *Controls)
     var released: pdapi.PDButtons = 0;
     var current: pdapi.PDButtons = 0;
     playdate.system.getButtonState(&current, &pressed, &released);
-    if(pressed != 0) {
-        entity_controls.*.pressed_this_frame = true;
+
+    const ANY_DPAD : pdapi.PDButtons = pdapi.BUTTON_DOWN | pdapi.BUTTON_LEFT | pdapi.BUTTON_RIGHT | pdapi.BUTTON_UP;
+    const BUTTONS : pdapi.PDButtons = ~ANY_DPAD;
+
+    // Movement 'feel'
+    if(pressed & ANY_DPAD != 0) {
+        entity_controls.*.dpad_pressed_this_frame = true;
     }
-    if(current != 0) {
-        entity_controls.*.movement = current;
-    }else if( entity_controls.*.pressed_this_frame == false ) {
+    if(current & ANY_DPAD != 0) {
+        entity_controls.*.movement = current & ANY_DPAD;
+    }else if( entity_controls.*.dpad_pressed_this_frame == false ) {
         entity_controls.*.movement = 0;
+    }
+
+    // Single press buttons
+    if(pressed & BUTTONS != 0 ) {
+        entity_controls.*.button_pressed |= pressed & BUTTONS;
     }
 }

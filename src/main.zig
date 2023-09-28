@@ -182,14 +182,14 @@ fn init(ctx: *context.Context) !void {
         try world.add_component(player_body_ent, "relation", ai.Relation{ .in = ai.Relation.HUMAN, .hates = 0, .loves = 0 });
         try world.add_component(player_body_ent, "breakable", breakable.Breakable{ .max_health = 4, .health = 4 });
 
-        const sword_entity : ecs.Entity = block: {
-            const sword_ent = try world.new_entity();
-            try world.add_component(sword_ent, "handy", handy.Handy{.damage = 2});
-            break :block sword_ent;
-        };
+        // const sword_entity : ecs.Entity = block: {
+        //     const sword_ent = try world.new_entity();
+        //     try world.add_component(sword_ent, "handy", handy.Handy{.damage = 2});
+        //     break :block sword_ent;
+        // };
 
-        const player_body : *body.Body = (try world.get_component(player_body_ent, "body", body.Body)).?;
-        player_body.*.holding_item = sword_entity;
+        // const player_body : *body.Body = (try world.get_component(player_body_ent, "body", body.Body)).?;
+        // player_body.*.holding_item = sword_entity;
     }
 
     { // Brain entity
@@ -216,6 +216,13 @@ fn init(ctx: *context.Context) !void {
 
         const player_body : *body.Body = (try world.get_component(enemy_body, "body", body.Body)).?;
         player_body.*.holding_item = sword_entity;
+    }
+    {
+        const sword_bitmap = playdate.graphics.getTableBitmap(ctx.*.tileset, 11).?;
+        const sword_ent = try world.new_entity();
+        try world.add_component(sword_ent, "handy", handy.Handy{.damage = 1});
+        try world.add_component(sword_ent, "image", image.Image{.bitmap = sword_bitmap});
+        try world.add_component(sword_ent, "transform", transform.Transform{ .x = 2, .y = 6 });
     }
     // Time stuff
     playdate.system.resetElapsedTime();
@@ -291,7 +298,7 @@ fn tick(ctx: *context.Context) !void {
     {
         var move_iter = ecs.data_iter(.{ .controls = controls.Controls, .brain = brain.Brain }).init(&ctx.*.world);
         while (move_iter.next()) |slice| {
-            try controls.update_movement(ctx, slice.controls, slice.brain);
+            try controls.update_movement(ctx, slice.entity, slice.controls, slice.brain);
         }
     }
 

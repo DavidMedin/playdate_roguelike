@@ -23,3 +23,6 @@ pub fn get_item_damage(ctx : *context.Context, me : ecs.Entity) !u64 {
         break :block 1;
     };
 }
+
+// // Non-system function
+// pub fn pickup_items(ctx: *context.Context, )
