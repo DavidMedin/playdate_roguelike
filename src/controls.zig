@@ -15,14 +15,14 @@ pub const Controls = struct {
     dpad_pressed_this_frame : bool = false,
     movement: pdapi.PDButtons = 0,
     button_pressed : pdapi.PDButtons = 0,
-    is_item_ready : bool, // Whether the uesr pressed 'A' and is waiting for more input.
+    is_item_ready : bool = false, // Whether the uesr pressed 'A' and is waiting for more input.
 };
 
 // TODO:
 // maybe remove diagonals
 // left+right in one tick should maybe cancel out
 
-fn input_direction(direction : pdapi.PDButtons) transform.Vector(i32) {
+pub fn input_direction(direction : pdapi.PDButtons) transform.Vector(i32) {
     var new_vector = transform.Vector(i32){.x = 0, .y = 0};
     if (direction & pdapi.BUTTON_LEFT != 0) {
     new_vector.x -= 1;
@@ -107,6 +107,9 @@ pub fn update_movement(ctx : *context.Context, me : ecs.Entity, entity_controls:
                 } // otherwise, don't pick up the item; you can't pick it up.
             }
         }
+    }else if(entity_controls.*.button_pressed & pdapi.BUTTON_A != 0) {
+        // use item.
+        entity_controls.*.is_item_ready = true;
     }
 
     entity_controls.*.dpad_pressed_this_frame = false;

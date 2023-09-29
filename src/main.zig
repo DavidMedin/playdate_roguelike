@@ -11,6 +11,7 @@ const ecs = @import("ecs");
 const context = @import("context.zig");
 const map = @import("map.zig");
 const ldtk = @import("ldtk.zig");
+const cursor = @import("cursor.zig");
 
 // Components
 const image = @import("image.zig");
@@ -24,12 +25,19 @@ const handy = @import("handy.zig");
 
 // Game Usage:
 // DPAD - Movement
+
 // A - ready item or use item
 // ready item + DPAD - use item direction (maybe crank instead)
 // ready item + B - cancel use item
+
 // hold B - Open Inventory
 // Over item + B - Pick up item (if no item in hand, put in hand)
 // Inventory + B - close inventory
+
+// Hold A - game pausing pie menu of actions
+// - Drop item
+// - Use item
+// - Throw item
 
 
 // Inventory:
@@ -136,12 +144,14 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
 
             const ecs_config = ecs.ECSConfig{ .component_allocator = GLOBAL_ALLOCATOR.? };
             var ctx: *context.Context = GLOBAL_ALLOCATOR.?.create(context.Context) catch unreachable; // allocate a context. This will never be free'd
+            var tilemap = playdate.graphics.loadBitmapTable("tilemap", null).?;
             ctx.* = context.Context{
                 .playdate = playdate,
                 .allocator = component_allocator(playdate),
                 .world = ecs.ECS.init(ecs_config) catch unreachable,
                 .map = map.Map.init(ctx), // Kinda sus, but does work. As long as map.init does't assume .tileset has been written to...
-                .tileset = playdate.graphics.loadBitmapTable("tilemap", null).?,
+                .tileset = tilemap,
+                .cursor = cursor.Cursor{.bitmap = playdate.graphics.getTableBitmap(tilemap, 3).?}
             };
             // g_playdate_image = playdate.graphics.loadBitmap("playdate_image", null).?;
             const font = playdate.graphics.loadFont("/System/Fonts/Asheville-Sans-14-Bold.pft", null).?;
@@ -275,6 +285,10 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
         const buffer_slice: []u8 = std.fmt.bufPrint(buffer[0..], "Health : {}/{}", args) catch unreachable; // A slice into 'buffer'.
         const width = playdate.graphics.drawText(buffer_slice.ptr, buffer_slice.len, pdapi.PDStringEncoding.ASCIIEncoding, 2, 240 - 16);
         _ = width;
+    }
+
+    if(ctx.*.cursor.active == true) {
+        ctx.*.cursor.draw(ctx);
     }
 
     // returning 1 signals to the OS to draw the frame.

@@ -72,7 +72,7 @@ pub fn Vector(comptime grid_type : type) type{
                 return inter;
             }else if(grid_type == i32 or grid_type == i64) {
                 return (Self{
-                    .x = @as(grid_type,
+                    .x = @as(grid_type,loadBitmap()
                         @intFromFloat(
                     std.math.round(inter.x))),
                     .y = @as(grid_type,
@@ -85,3 +85,8 @@ pub fn Vector(comptime grid_type : type) type{
     };
 }
 pub const Transform = Vector(i32);
+
+
+pub fn game_to_screen(in : Vector(i32)) Vector(i32) {
+    return .{.x = in.x * 16, .y = in.y * 16};
+}
