@@ -9,13 +9,13 @@ pub fn Vector(comptime grid_type : type) type{
     return struct {
         const Self = @This();
         x: grid_type, y: grid_type,
-        pub fn plus(self: Self, other : Self) Self {
+        pub inline fn plus(self: Self, other : Self) Self {
             return .{.x = self.x + other.x, .y = self.y + other.y};
         }
-        pub fn sub(self: Self, other : Self) Self {
+        pub inline fn sub(self: Self, other : Self) Self {
             return .{.x = self.x - other.x, .y = self.y - other.y};
         }
-        pub fn divide(self : Self, other : anytype) Self {
+        pub inline fn divide(self : Self, other : anytype) Self {
             if(@TypeOf(other) == Self) {
                 return .{.x = self.x / other.x, .y = self.y / other.y};
             }
@@ -24,11 +24,11 @@ pub fn Vector(comptime grid_type : type) type{
             }
             @panic("Vector.divide can only take a Vector or f32!");
         }
-        pub fn eql(self : Self, other : Self) bool {
+        pub inline fn eql(self : Self, other : Self) bool {
             return self.x == other.x and self.y == other.y;
         }
 
-        pub fn cast(self : Self, comptime to : type) Vector(to) {
+        pub inline fn cast(self : Self, comptime to : type) Vector(to) {
             switch(@typeInfo(grid_type)) {
                 .Int => {
                     switch(@typeInfo(to)) {
@@ -58,10 +58,10 @@ pub fn Vector(comptime grid_type : type) type{
             }
         }
 
-        pub fn mag(self : Self) f32 {
+        pub inline fn mag(self : Self) f32 {
             return std.math.sqrt( std.math.pow(f32, @as(f32, self.x), 2) + std.math.pow(f32,@as(f32,self.y), 2));
         }
-        pub fn normalize(self : Self) !Self {
+        pub inline fn normalize(self : Self) !Self {
             
             const magnitude = self.cast(f32).mag();
             if(magnitude == 0){
@@ -82,13 +82,13 @@ pub fn Vector(comptime grid_type : type) type{
             }
             @panic("I don't know how to convert!");
         }
-        pub fn distance(self : Self, other : Self) f32 {
+        pub inline fn distance(self : Self, other : Self) f32 {
             const f32_self : Vector(f32) = self.cast(f32);
             const f32_other : Vector(f32) = other.cast(f32);
             return std.math.sqrt( std.math.pow(f32, f32_self.x - f32_other.x, 2) + std.math.pow(f32, f32_self.y - f32_other.y,2));
         }
 
-        pub fn is_adjacent(self : Self, other : Self) bool {
+        pub inline fn is_adjacent(self : Self, other : Self) bool {
             switch(@typeInfo(grid_type)){
                 .Int => {
                     return (std.math.absCast(other.x - self.x) <= 1) and (std.math.absCast(other.y - self.y) <= 1);
@@ -104,6 +104,6 @@ pub fn Vector(comptime grid_type : type) type{
 pub const Transform = Vector(i32);
 
 
-pub fn game_to_screen(in : Vector(i32)) Vector(i32) {
+pub inline fn game_to_screen(in : Vector(i32)) Vector(i32) {
     return .{.x = in.x * 16, .y = in.y * 16};
 }
