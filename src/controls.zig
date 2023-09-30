@@ -106,6 +106,7 @@ pub fn item_update(ctx: *context.Context, me: ecs.Entity, entity_controls: *Cont
     }
 
     entity_controls.*.dpad_pressed_this_frame = false;
+    entity_controls.*.button_pressed = 0;
 }
 
 pub fn update_movement(ctx: *context.Context, me: ecs.Entity, entity_controls: *Controls, entity_brain: *brain.Brain) !void {
