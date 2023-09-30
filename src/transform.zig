@@ -72,7 +72,7 @@ pub fn Vector(comptime grid_type : type) type{
                 return inter;
             }else if(grid_type == i32 or grid_type == i64) {
                 return (Self{
-                    .x = @as(grid_type,loadBitmap()
+                    .x = @as(grid_type,
                         @intFromFloat(
                     std.math.round(inter.x))),
                     .y = @as(grid_type,

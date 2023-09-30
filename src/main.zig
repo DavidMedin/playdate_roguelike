@@ -39,14 +39,12 @@ const handy = @import("handy.zig");
 // - Use item
 // - Throw item
 
-
 // Inventory:
 // Storage for items.
 // Cursor on Item + A - open options
 // Item Options:
 // - Drop item
 // - equip item
-
 
 // TODO: Gameplay
 // [x] Draw a map from an ID image
@@ -57,12 +55,12 @@ const handy = @import("handy.zig");
 // [] Using item pauses game
 // [] tap vs hold B
 // [] Inventory menu
-    // [] exit Inv (B)
-    // [] pause game in inv
-    // [] DPAD nav
-    // [] crank nav?
-    // [] drop item
-    // [] equip item
+// [] exit Inv (B)
+// [] pause game in inv
+// [] DPAD nav
+// [] crank nav?
+// [] drop item
+// [] equip item
 // [] collidable chest with items
 // [] openable chest - move items between chest and inv
 
@@ -151,7 +149,7 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
                 .world = ecs.ECS.init(ecs_config) catch unreachable,
                 .map = map.Map.init(ctx), // Kinda sus, but does work. As long as map.init does't assume .tileset has been written to...
                 .tileset = tilemap,
-                .cursor = cursor.Cursor{.bitmap = playdate.graphics.getTableBitmap(tilemap, 3).?}
+                .cursor = cursor.Cursor{ .bitmap = playdate.graphics.getTableBitmap(tilemap, 3).? },
             };
             // g_playdate_image = playdate.graphics.loadBitmap("playdate_image", null).?;
             const font = playdate.graphics.loadFont("/System/Fonts/Asheville-Sans-14-Bold.pft", null).?;
@@ -220,20 +218,20 @@ fn init(ctx: *context.Context) !void {
         try world.add_component(enemy_body, "relation", ai.Relation{ .in = ai.Relation.GOBLIN, .hates = ai.Relation.HUMAN, .loves = 0 });
         try world.add_component(enemy_body, "breakable", breakable.Breakable{ .max_health = 4, .health = 4 });
 
-         const sword_entity : ecs.Entity = block: {
+        const sword_entity: ecs.Entity = block: {
             const sword_ent = try world.new_entity();
-            try world.add_component(sword_ent, "handy", handy.Handy{.damage = 1});
+            try world.add_component(sword_ent, "handy", handy.Handy{ .damage = 1 });
             break :block sword_ent;
         };
 
-        const player_body : *body.Body = (try world.get_component(enemy_body, "body", body.Body)).?;
+        const player_body: *body.Body = (try world.get_component(enemy_body, "body", body.Body)).?;
         player_body.*.holding_item = sword_entity;
     }
     {
         const sword_bitmap = playdate.graphics.getTableBitmap(ctx.*.tileset, 11).?;
         const sword_ent = try world.new_entity();
-        try world.add_component(sword_ent, "handy", handy.Handy{.damage = 1});
-        try world.add_component(sword_ent, "image", image.Image{.bitmap = sword_bitmap});
+        try world.add_component(sword_ent, "handy", handy.Handy{ .damage = 1 });
+        try world.add_component(sword_ent, "image", image.Image{ .bitmap = sword_bitmap });
         try world.add_component(sword_ent, "transform", transform.Transform{ .x = 2, .y = 6 });
     }
     // Time stuff
@@ -287,7 +285,7 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
         _ = width;
     }
 
-    if(ctx.*.cursor.active == true) {
+    if (ctx.*.cursor.active == true) {
         ctx.*.cursor.draw(ctx);
     }
 
@@ -297,24 +295,35 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
 }
 
 fn tick(ctx: *context.Context) !void {
-    {
-        var iter = ecs.data_iter(.{ .brain = brain.Brain }).init(&ctx.*.world);
-        while (iter.next()) |slice| {
-            brain.react(slice.brain);
+    if (!ctx.*.game_paused and !ctx.*.tick_paused) {
+        // game is not paused, go ham.
+        {
+            var iter = ecs.data_iter(.{ .brain = brain.Brain }).init(&ctx.*.world);
+            while (iter.next()) |slice| {
+                brain.react(slice.brain);
+            }
         }
-    }
 
-    {
-        var iter = ecs.data_iter(.{ .ai = ai.AI, .brain = brain.Brain }).init(&ctx.*.world);
-        while (iter.next()) |slice| {
-            try ai.move(ctx, slice.entity , slice.ai, slice.brain);
+        {
+            var iter = ecs.data_iter(.{ .ai = ai.AI, .brain = brain.Brain }).init(&ctx.*.world);
+            while (iter.next()) |slice| {
+                try ai.move(ctx, slice.entity, slice.ai, slice.brain);
+            }
         }
-    }
 
-    {
-        var move_iter = ecs.data_iter(.{ .controls = controls.Controls, .brain = brain.Brain }).init(&ctx.*.world);
-        while (move_iter.next()) |slice| {
-            try controls.update_movement(ctx, slice.entity, slice.controls, slice.brain);
+        {
+            var move_iter = ecs.data_iter(.{ .controls = controls.Controls, .brain = brain.Brain }).init(&ctx.*.world);
+            while (move_iter.next()) |slice| {
+                try controls.update_movement(ctx, slice.entity, slice.controls, slice.brain);
+            }
+        }
+    } else if (!ctx.*.game_paused and ctx.*.tick_paused) {
+        // world ticks are paused, but cursor movement isn't! Maybe the player is selecting something to do.
+        {
+            var move_iter = ecs.data_iter(.{ .controls = controls.Controls, .brain = brain.Brain }).init(&ctx.*.world);
+            while (move_iter.next()) |slice| {
+                try controls.item_update(ctx, slice.entity, slice.controls, slice.brain);
+            }
         }
     }
 
