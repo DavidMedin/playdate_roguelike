@@ -40,6 +40,7 @@ pub fn input_direction(direction: pdapi.PDButtons) transform.Vector(i32) {
     return new_vector;
 }
 
+
 pub fn hit_init(ctx: *context.Context, users_pos : *transform.Transform) void{
     ctx.*.cursor.active = true;
     ctx.*.tick_paused = true;
@@ -48,7 +49,6 @@ pub fn hit_init(ctx: *context.Context, users_pos : *transform.Transform) void{
 pub fn hit_deinit(ctx: *context.Context) void {
     ctx.*.tick_paused = false;
     ctx.*.cursor.active = false;
-
 }
 
 pub fn item_update(ctx: *context.Context, me: ecs.Entity, entity_controls: *Controls, entity_brain: *brain.Brain) !void {
@@ -93,8 +93,15 @@ pub fn item_update(ctx: *context.Context, me: ecs.Entity, entity_controls: *Cont
         return;
     };
     // Now we have the actual item that is being used right now.
-    const direction = input_direction(entity_controls.*.movement);
-    ctx.*.cursor.position = ctx.*.cursor.position.plus(direction);
+
+    const direction = input_direction(entity_controls.*.movement); // Resolve input
+    const would_go_to = ctx.*.cursor.position.plus(direction); // Where would the cursor go?
+    var body_transform : *transform.Transform = (try world.get_component(body_entity, "transform", transform.Transform)).?;
+
+    if(body_transform.*.is_adjacent(would_go_to))  { // If the cursor would stay within 1 tile from the caster
+        ctx.*.cursor.position = would_go_to;
+    }
+
     if (entity_controls.*.button_pressed & pdapi.BUTTON_A != 0) {
         // Pressed 'A'
         try handy.hit(ctx, body_entity, item_entity, item_handy);
@@ -110,7 +117,7 @@ pub fn item_update(ctx: *context.Context, me: ecs.Entity, entity_controls: *Cont
 }
 
 pub fn update_movement(ctx: *context.Context, me: ecs.Entity, entity_controls: *Controls, entity_brain: *brain.Brain) !void {
-    var world: *ecs.ECS = &ctx.*.world;
+    var world: *ecs.ECS = &ctx.*.world; // Helper misdirection
     if (entity_brain.*.time_till_react != 0) {
         // Too slow!
         return;
@@ -125,19 +132,9 @@ pub fn update_movement(ctx: *context.Context, me: ecs.Entity, entity_controls: *
         const move_to = entity_transform.*.plus(direction);
         if (!ctx.*.map.collides(move_to)) {
             // Doesn't collide!
-
-            // Is there an entity chillin' at this spot?
-            // const entity_there = get_entity_here(world, move_to);
-            // if(entity_there != null) { // If so, attack it I suppose
-
-            //     const damage : u64 = try body.get_item_damage(ctx, entity_body);
-
-            //     // This garbage attacks. If it errors, ignore it if the entity simple doesn't have the component. Halt and Catch Fire otherwise.
-            //     breakable.take_damage(ctx, entity_there, damage) catch |err| switch (err) {ecs.ECSError.EntityDoesNotHaveComponent => {}, else => return err};
-            // }else{// If not, move there.
             entity_transform.* = move_to;
-            // }
         }
+
     } else if (entity_controls.*.button_pressed & pdapi.BUTTON_B != 0) {
         std.log.info("B has been pressed!", .{});
         // Is there an entity chillin' at this spot?

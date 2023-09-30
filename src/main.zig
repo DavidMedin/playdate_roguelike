@@ -204,7 +204,7 @@ fn init(ctx: *context.Context) !void {
 
     { // Brain entity
         const enemy_brain: ecs.Entity = try world.new_entity();
-        try world.add_component(enemy_brain, "brain", brain.Brain{ .reaction_time = 1, .body = undefined });
+        try world.add_component(enemy_brain, "brain", brain.Brain{ .reaction_time = 3, .body = undefined });
         try world.add_component(enemy_brain, "ai", ai.AI{});
         var brain_component: *brain.Brain = (try world.get_component(enemy_brain, "brain", brain.Brain)).?;
 
@@ -255,7 +255,6 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
             std.log.warn("Dropping frames! {} leftover seconds, {} dropped frames.", .{ time_leftovers, std.math.floor(time_leftovers / tick_length) });
         }
         playdate.system.resetElapsedTime();
-        // std.log.debug("Tick! ({})", .{time_leftovers});
         tick(ctx) catch unreachable;
     }
 

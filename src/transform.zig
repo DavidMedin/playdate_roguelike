@@ -82,6 +82,23 @@ pub fn Vector(comptime grid_type : type) type{
             }
             @panic("I don't know how to convert!");
         }
+        pub fn distance(self : Self, other : Self) f32 {
+            const f32_self : Vector(f32) = self.cast(f32);
+            const f32_other : Vector(f32) = other.cast(f32);
+            return std.math.sqrt( std.math.pow(f32, f32_self.x - f32_other.x, 2) + std.math.pow(f32, f32_self.y - f32_other.y,2));
+        }
+
+        pub fn is_adjacent(self : Self, other : Self) bool {
+            switch(@typeInfo(grid_type)){
+                .Int => {
+                    return (std.math.absCast(other.x - self.x) <= 1) and (std.math.absCast(other.y - self.y) <= 1);
+                },
+                else => {
+                    @panic("Literally doesn't make sense, yo.");
+                }
+            }
+            unreachable;
+        }
     };
 }
 pub const Transform = Vector(i32);
