@@ -51,8 +51,8 @@ const handy = @import("handy.zig");
 // [x] Collidable walls
 // [x] damage!
 // [x] Pick up item on floor (B)
-// [] Attack with swipe
-// [] Using item pauses game
+// [x] Attack with swipe
+// [x] Using item pauses game
 // [] tap vs hold B
 // [] Inventory menu
 // [] exit Inv (B)

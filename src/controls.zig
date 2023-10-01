@@ -11,11 +11,16 @@ const breakable = @import("breakable.zig");
 const body = @import("body.zig");
 const handy = @import("handy.zig");
 
+const b_hold_click_ms= 150;
+const b_hold_inv_ms = 500;
 pub const Controls = struct {
     const Self = @This();
     dpad_pressed_this_frame: bool = false,
     movement: pdapi.PDButtons = 0,
-    button_pressed: pdapi.PDButtons = 0,
+    buttons_pressed: pdapi.PDButtons = 0,
+    buttons_released  :pdapi.PDButtons = 0,
+    b_holding_timer : u32 = 0, // B is down right now, for how long?
+    b_held_length : u32 = 0, // B was released, how long was it pressed?
     // is_item_ready: bool = false, // Whether the uesr pressed 'A' and is waiting for more input.
 };
 
@@ -102,18 +107,41 @@ pub fn item_update(ctx: *context.Context, me: ecs.Entity, entity_controls: *Cont
         ctx.*.cursor.position = would_go_to;
     }
 
-    if (entity_controls.*.button_pressed & pdapi.BUTTON_A != 0) {
+    if (entity_controls.*.buttons_pressed & pdapi.BUTTON_A != 0) {
         // Pressed 'A'
         try handy.hit(ctx, body_entity, item_entity, item_handy);
         // Done hitting, resume!
         hit_deinit(ctx);
-    }else if(entity_controls.*.button_pressed & pdapi.BUTTON_B != 0) {
+    }else if(entity_controls.*.buttons_pressed & pdapi.BUTTON_B != 0) {
         // Pressed 'B"
         hit_deinit(ctx);
     }
 
     entity_controls.*.dpad_pressed_this_frame = false;
-    entity_controls.*.button_pressed = 0;
+    entity_controls.*.buttons_pressed = 0;
+}
+
+pub inline fn pickup_item(ctx : *context.Context, me : ecs.Entity, entity_body : ecs.Entity, entity_transform : *transform.Transform, direction : transform.Vector(i32)) !void {
+    const world = &ctx.*.world;
+    // Is there an entity chillin' at this spot?
+    if (try map.get_entities_here(ctx, entity_transform.*.plus(direction))) |entities_there| {
+        defer entities_there.deinit(); // Delete the allocated stuff there.
+        // There can be multiple entities in one place. So, pick up the first valid item. Not me though. No self-picking-up.
+        for (entities_there.items) |entity| {
+            if (std.meta.eql(me, entity)) {
+                // Don't pick up yourself.
+                continue;
+            }
+            if (try world.get_component(entity, "handy", handy.Handy) != null) {
+                if (try world.get_component(entity_body, "body", body.Body)) |entity_body_body| {
+                    entity_body_body.*.holding_item = entity;
+                    try world.queue_remove_component(entity, "transform");
+                    try world.queue_remove_component(entity, "image");
+                    break;
+                } // Otherwise, your body can't pick up things. L rip bozo
+            } // otherwise, don't pick up the item; you can't pick it up.
+        }
+    }
 }
 
 pub fn update_movement(ctx: *context.Context, me: ecs.Entity, entity_controls: *Controls, entity_brain: *brain.Brain) !void {
@@ -135,28 +163,23 @@ pub fn update_movement(ctx: *context.Context, me: ecs.Entity, entity_controls: *
             entity_transform.* = move_to;
         }
 
-    } else if (entity_controls.*.button_pressed & pdapi.BUTTON_B != 0) {
-        std.log.info("B has been pressed!", .{});
-        // Is there an entity chillin' at this spot?
-        if (try map.get_entities_here(ctx, entity_transform.*.plus(direction))) |entities_there| {
-            defer entities_there.deinit(); // Delete the allocated stuff there.
-            // There can be multiple entities in one place. So, pick up the first valid item. Not me though. No self-picking-up.
-            for (entities_there.items) |entity| {
-                if (std.meta.eql(me, entity)) {
-                    // Don't pick up yourself.
-                    continue;
-                }
-                if (try world.get_component(entity, "handy", handy.Handy) != null) {
-                    if (try world.get_component(entity_body, "body", body.Body)) |entity_body_body| {
-                        entity_body_body.*.holding_item = entity;
-                        try world.queue_remove_component(entity, "transform");
-                        try world.queue_remove_component(entity, "image");
-                        break;
-                    } // Otherwise, your body can't pick up things. L rip bozo
-                } // otherwise, don't pick up the item; you can't pick it up.
-            }
+    } else if (entity_controls.*.buttons_released & pdapi.BUTTON_B != 0) {
+        
+        // const hold_to_inv_ms = 300;
+        std.log.info("B has been released after {} milliseconds!", .{entity_controls.*.b_held_length});
+        if(entity_controls.*.b_held_length < b_hold_click_ms) {
+            std.log.info("Try picking up item.", .{});
+            try pickup_item(ctx,me,entity_body,entity_transform,direction); // The player held the 'B' button short enough to pick up an item.
         }
-    } else if (entity_controls.*.button_pressed & pdapi.BUTTON_A != 0) {
+        // else if(entity_controls.*.b_held_length >= hold_to_display_ms and entity_controls.*.b_held_length < hold_to_inv_ms){
+        //     // THe player is holding 'B', display the 'HOLDING B' thing.
+        //     std.log.info("Display 'holding b'", .{});
+        // }else if(entity_controls.*.b_held_length < hold_to_inv_ms) {
+        //     // The player held 'b' long enough to open the inventory.
+        //     std.log.info("Open inventory",.{});
+        // }
+
+    } else if (entity_controls.*.buttons_pressed & pdapi.BUTTON_A != 0) {
         // use item.
         // ctx.*.tick_paused = true; // Pause the game stuff! You can't move, enemies can't move, and such.
         hit_init(ctx,entity_transform); // If we are hitting...
@@ -164,7 +187,8 @@ pub fn update_movement(ctx: *context.Context, me: ecs.Entity, entity_controls: *
     }
 
     entity_controls.*.dpad_pressed_this_frame = false;
-    entity_controls.*.button_pressed = 0;
+    entity_controls.*.buttons_pressed = 0;
+    entity_controls.*.buttons_released = 0;
 }
 
 pub fn update_controls(playdate: *pdapi.PlaydateAPI, entity_controls: *Controls) void {
@@ -188,6 +212,21 @@ pub fn update_controls(playdate: *pdapi.PlaydateAPI, entity_controls: *Controls)
 
     // Single press buttons
     if (pressed & BUTTONS != 0) {
-        entity_controls.*.button_pressed |= pressed & BUTTONS;
+        entity_controls.*.buttons_pressed |= pressed & BUTTONS;
+    }
+    if (released & BUTTONS != 0) {
+        entity_controls.*.buttons_released |= released & BUTTONS;
+    }
+
+    if(pressed & pdapi.BUTTON_B != 0){
+        entity_controls.*.b_holding_timer = playdate.system.getCurrentTimeMilliseconds();
+    }
+    else if(released & pdapi.BUTTON_B != 0){
+        entity_controls.*.b_held_length = playdate.system.getCurrentTimeMilliseconds() - entity_controls.*.b_holding_timer;
+        entity_controls.*.b_holding_timer = 0;
+    }
+
+    if(current & pdapi.BUTTON_B != 0) {
+        
     }
 }
