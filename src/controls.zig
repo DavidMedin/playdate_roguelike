@@ -12,7 +12,7 @@ const body = @import("body.zig");
 const handy = @import("handy.zig");
 
 const b_hold_click_ms= 150;
-const b_hold_inv_ms = 500;
+const b_hold_inv_ms = 750;
 pub const Controls = struct {
     const Self = @This();
     dpad_pressed_this_frame: bool = false,
@@ -21,7 +21,7 @@ pub const Controls = struct {
     buttons_released  :pdapi.PDButtons = 0,
     b_holding_timer : u32 = 0, // B is down right now, for how long?
     b_held_length : u32 = 0, // B was released, how long was it pressed?
-    // is_item_ready: bool = false, // Whether the uesr pressed 'A' and is waiting for more input.
+    display_b_hold : bool = false
 };
 
 // TODO:
@@ -171,25 +171,20 @@ pub fn update_movement(ctx: *context.Context, me: ecs.Entity, entity_controls: *
             std.log.info("Try picking up item.", .{});
             try pickup_item(ctx,me,entity_body,entity_transform,direction); // The player held the 'B' button short enough to pick up an item.
         }
-        // else if(entity_controls.*.b_held_length >= hold_to_display_ms and entity_controls.*.b_held_length < hold_to_inv_ms){
-        //     // THe player is holding 'B', display the 'HOLDING B' thing.
-        //     std.log.info("Display 'holding b'", .{});
-        // }else if(entity_controls.*.b_held_length < hold_to_inv_ms) {
-        //     // The player held 'b' long enough to open the inventory.
-        //     std.log.info("Open inventory",.{});
-        // }
 
     } else if (entity_controls.*.buttons_pressed & pdapi.BUTTON_A != 0) {
         // use item.
-        // ctx.*.tick_paused = true; // Pause the game stuff! You can't move, enemies can't move, and such.
         hit_init(ctx,entity_transform); // If we are hitting...
-        // ctx.*.cursor.position = entity_transform.*;
     }
 
     entity_controls.*.dpad_pressed_this_frame = false;
     entity_controls.*.buttons_pressed = 0;
     entity_controls.*.buttons_released = 0;
 }
+
+// pub fn init_control(entity_controls: *Controls) {
+//     entity_controls.*. playdate.system.getCurrentTimeMilliseconds()
+// }
 
 pub fn update_controls(playdate: *pdapi.PlaydateAPI, entity_controls: *Controls) void {
     var pressed: pdapi.PDButtons = 0;
@@ -225,8 +220,17 @@ pub fn update_controls(playdate: *pdapi.PlaydateAPI, entity_controls: *Controls)
         entity_controls.*.b_held_length = playdate.system.getCurrentTimeMilliseconds() - entity_controls.*.b_holding_timer;
         entity_controls.*.b_holding_timer = 0;
     }
+    const current_held_ms = playdate.system.getCurrentTimeMilliseconds() - entity_controls.*.b_holding_timer;
 
-    if(current & pdapi.BUTTON_B != 0) {
-        
+    if(current & pdapi.BUTTON_B != 0 and current_held_ms > b_hold_click_ms and current_held_ms < b_hold_inv_ms) {
+        entity_controls.*.display_b_hold = true;
+    }else {
+        entity_controls.*.display_b_hold = false;
+    }
+}
+
+pub fn display_controls(playdate: *pdapi.PlaydateAPI, entity_controls: *Controls) void {
+    if(entity_controls.*.display_b_hold){
+        _ = playdate.graphics.drawText("B", 1, pdapi.PDStringEncoding.ASCIIEncoding, 400-10, 240 - 20);
     }
 }

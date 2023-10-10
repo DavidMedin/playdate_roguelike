@@ -275,6 +275,12 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
         slice.image.draw(ctx, .{ .x = slice.transform.*.x, .y = slice.transform.*.y });
     }
 
+
+    if (ctx.*.cursor.active == true) {
+        ctx.*.cursor.draw(ctx);
+    }
+
+    // UI
     {
         const player_breakable: *breakable.Breakable = (world.get_component(ctx.*.player_entity, "breakable", breakable.Breakable) catch unreachable).?;
         const args = .{ player_breakable.*.max_health, player_breakable.*.health };
@@ -283,10 +289,14 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
         const width = playdate.graphics.drawText(buffer_slice.ptr, buffer_slice.len, pdapi.PDStringEncoding.ASCIIEncoding, 2, 240 - 16);
         _ = width;
     }
-
-    if (ctx.*.cursor.active == true) {
-        ctx.*.cursor.draw(ctx);
+    {
+        var iter = ecs.data_iter(.{.controls = controls.Controls}).init(&ctx.*.world);
+        while(iter.next() ) |slice| {
+            controls.display_controls(playdate,slice.controls);
+        }
     }
+
+
 
     // returning 1 signals to the OS to draw the frame.
     // we always want this frame drawn
