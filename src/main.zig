@@ -53,7 +53,7 @@ const handy = @import("handy.zig");
 // [x] Pick up item on floor (B)
 // [x] Attack with swipe
 // [x] Using item pauses game
-// [] tap vs hold B
+// [x] tap vs hold B
 // [] Inventory menu
 // [] exit Inv (B)
 // [] pause game in inv
@@ -150,6 +150,8 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
                 .map = map.Map.init(ctx), // Kinda sus, but does work. As long as map.init does't assume .tileset has been written to...
                 .tileset = tilemap,
                 .cursor = cursor.Cursor{ .bitmap = playdate.graphics.getTableBitmap(tilemap, 3).? },
+                .inv_img = playdate.graphics.loadBitmap("inv", null).?,
+                .world_frame = playdate.graphics.newBitmap(320,240,@intFromEnum(pdapi.LCDSolidColor.ColorClear)).?
             };
             // g_playdate_image = playdate.graphics.loadBitmap("playdate_image", null).?;
             const font = playdate.graphics.loadFont("/System/Fonts/Asheville-Sans-14-Bold.pft", null).?;
@@ -265,7 +267,9 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
     }
 
     // Drawing
-    ctx.*.playdate.graphics.clear(@intFromEnum(pdapi.LCDSolidColor.ColorWhite));
+    ctx.*.playdate.graphics.clear(@intFromEnum(pdapi.LCDSolidColor.ColorBlack));
+    playdate.graphics.pushContext(ctx.*.world_frame);
+    ctx.*.playdate.graphics.clear(@intFromEnum(pdapi.LCDSolidColor.ColorBlack));
 
     ctx.*.map.draw();
     // Iterate through all images and draw them
@@ -279,17 +283,23 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
     if (ctx.*.cursor.active == true) {
         ctx.*.cursor.draw(ctx);
     }
-
+    playdate.graphics.popContext();
+    playdate.graphics.drawBitmap(ctx.*.world_frame, 80,0, pdapi.LCDBitmapFlip.BitmapUnflipped);
     // UI
+    // Draw Inventory Image
+    {
+        ctx.*.playdate.graphics.drawBitmap(ctx.*.inv_img, 0,0, pdapi.LCDBitmapFlip.BitmapUnflipped);
+    }
+    // Text
     {
         const player_breakable: *breakable.Breakable = (world.get_component(ctx.*.player_entity, "breakable", breakable.Breakable) catch unreachable).?;
         const args = .{ player_breakable.*.max_health, player_breakable.*.health };
         var buffer: [100]u8 = undefined; // Using a buffered format because it is faster. Also, Health : {} is never bigger than 100 characters.
-        const buffer_slice: []u8 = std.fmt.bufPrint(buffer[0..], "Health : {}/{}", args) catch unreachable; // A slice into 'buffer'.
-        const width = playdate.graphics.drawText(buffer_slice.ptr, buffer_slice.len, pdapi.PDStringEncoding.ASCIIEncoding, 2, 240 - 16);
+        const buffer_slice: []u8 = std.fmt.bufPrint(buffer[0..], "Health\n{}/{}", args) catch unreachable; // A slice into 'buffer'.
+        const width = playdate.graphics.drawText(buffer_slice.ptr, buffer_slice.len, pdapi.PDStringEncoding.ASCIIEncoding, 2, 240 - (36));
         _ = width;
     }
-    {
+    { // Display Controlls
         var iter = ecs.data_iter(.{.controls = controls.Controls}).init(&ctx.*.world);
         while(iter.next() ) |slice| {
             controls.display_controls(playdate,slice.controls);

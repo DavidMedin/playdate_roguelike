@@ -12,7 +12,7 @@ const body = @import("body.zig");
 const handy = @import("handy.zig");
 
 const b_hold_click_ms= 150;
-const b_hold_inv_ms = 750;
+// const b_hold_inv_ms = 750;
 pub const Controls = struct {
     const Self = @This();
     dpad_pressed_this_frame: bool = false,
@@ -27,6 +27,7 @@ pub const Controls = struct {
 // TODO:
 // maybe remove diagonals
 // left+right in one tick should maybe cancel out
+
 
 pub fn input_direction(direction: pdapi.PDButtons) transform.Vector(i32) {
     var new_vector = transform.Vector(i32){ .x = 0, .y = 0 };
@@ -170,6 +171,8 @@ pub fn update_movement(ctx: *context.Context, me: ecs.Entity, entity_controls: *
         if(entity_controls.*.b_held_length < b_hold_click_ms) {
             std.log.info("Try picking up item.", .{});
             try pickup_item(ctx,me,entity_body,entity_transform,direction); // The player held the 'B' button short enough to pick up an item.
+        }else {
+            // Open the inventory! The player held 'B' for long enough.
         }
 
     } else if (entity_controls.*.buttons_pressed & pdapi.BUTTON_A != 0) {
@@ -222,7 +225,7 @@ pub fn update_controls(playdate: *pdapi.PlaydateAPI, entity_controls: *Controls)
     }
     const current_held_ms = playdate.system.getCurrentTimeMilliseconds() - entity_controls.*.b_holding_timer;
 
-    if(current & pdapi.BUTTON_B != 0 and current_held_ms > b_hold_click_ms and current_held_ms < b_hold_inv_ms) {
+    if(current & pdapi.BUTTON_B != 0 and current_held_ms > b_hold_click_ms ) { // and current_held_ms < b_hold_inv_ms
         entity_controls.*.display_b_hold = true;
     }else {
         entity_controls.*.display_b_hold = false;
