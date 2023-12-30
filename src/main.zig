@@ -12,6 +12,7 @@ const context = @import("context.zig");
 const map = @import("map.zig");
 const ldtk = @import("ldtk.zig");
 const cursor = @import("cursor.zig");
+const inv_gui = @import("inv-gui.zig");
 
 // Components
 const image = @import("image.zig");
@@ -168,7 +169,7 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
     }
     return 0;
 }
-
+    
 fn init(ctx: *context.Context) !void {
     const playdate = ctx.*.playdate;
     const world = &ctx.*.world;
@@ -268,7 +269,7 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
 
     // Drawing
     ctx.*.playdate.graphics.clear(@intFromEnum(pdapi.LCDSolidColor.ColorBlack));
-    playdate.graphics.pushContext(ctx.*.world_frame);
+    playdate.graphics.pushContext(ctx.*.world_frame); // ============= Draw the 'Game World'.
     ctx.*.playdate.graphics.clear(@intFromEnum(pdapi.LCDSolidColor.ColorBlack));
 
     ctx.*.map.draw();
@@ -283,17 +284,18 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
     if (ctx.*.cursor.active == true) {
         ctx.*.cursor.draw(ctx);
     }
-    playdate.graphics.popContext();
+    playdate.graphics.popContext(); // ==========================================================
     playdate.graphics.drawBitmap(ctx.*.world_frame, 80,0, pdapi.LCDBitmapFlip.BitmapUnflipped);
     // UI
     // Draw Inventory Image
     {
-        ctx.*.playdate.graphics.drawBitmap(ctx.*.inv_img, 0,0, pdapi.LCDBitmapFlip.BitmapUnflipped);
+        // ctx.*.playdate.graphics.drawBitmap(ctx.*.inv_img, 0,0, pdapi.LCDBitmapFlip.BitmapUnflipped);
+        inv_gui.draw_inv_gui(ctx);
     }
     // Text
     {
         const player_breakable: *breakable.Breakable = (world.get_component(ctx.*.player_entity, "breakable", breakable.Breakable) catch unreachable).?;
-        const args = .{ player_breakable.*.max_health, player_breakable.*.health };
+        const args = .{ player_breakable.*.health, player_breakable.*.max_health };
         var buffer: [100]u8 = undefined; // Using a buffered format because it is faster. Also, Health : {} is never bigger than 100 characters.
         const buffer_slice: []u8 = std.fmt.bufPrint(buffer[0..], "Health\n{}/{}", args) catch unreachable; // A slice into 'buffer'.
         const width = playdate.graphics.drawText(buffer_slice.ptr, buffer_slice.len, pdapi.PDStringEncoding.ASCIIEncoding, 2, 240 - (36));
