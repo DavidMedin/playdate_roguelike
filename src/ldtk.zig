@@ -119,7 +119,7 @@ pub fn test_json(playdate: *pdapi.PlaydateAPI, allocator: std.mem.Allocator) !vo
     if (playdate.file.stat(file_name, &stats) != 0) {
         unreachable;
     }
-    var file: *pdapi.SDFile = playdate.file.open(file_name, pdapi.FILE_READ).?;
+    const file: *pdapi.SDFile = playdate.file.open(file_name, pdapi.FILE_READ).?;
     defer if (playdate.file.close(file) != 0) {
         unreachable;
     };
@@ -127,7 +127,7 @@ pub fn test_json(playdate: *pdapi.PlaydateAPI, allocator: std.mem.Allocator) !vo
     // Allocate enough space for the json text.
     var json_string: [*]u8 = @ptrCast(playdate.system.realloc(null, stats.size).?);
     defer _ = playdate.system.realloc(json_string, 0);
-    var json_slice: []u8 = json_string[0..stats.size];
+    const json_slice: []u8 = json_string[0..stats.size];
 
     const bytes_read = playdate.file.read(file, json_string, stats.size);
     if (bytes_read != stats.size) {
@@ -147,7 +147,7 @@ test "aaah" {
     // std.debug.print("Hello",.{});
     const file = try std.fs.cwd().openFile("assets/map.ldtk", .{});
     const file_stats = try file.stat();
-    var file_data: []u8 = try file.readToEndAlloc(std.testing.allocator, file_stats.size);
+    const file_data: []u8 = try file.readToEndAlloc(std.testing.allocator, file_stats.size);
     file.close();
 
     // std.debug.print("{s}", .{file_data});

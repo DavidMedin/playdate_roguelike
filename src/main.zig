@@ -1,6 +1,6 @@
 // Author : David Medin
 // Email : david@davidmedin.com
-// Zig Version : 0.12.0-dev.21+ac95cfe44
+// Zig Version : 0.12.0-dev.2036+fc79b22a9
 
 const std = @import("std");
 
@@ -142,8 +142,8 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
             GLOBAL_ALLOCATOR = component_allocator(playdate);
 
             const ecs_config = ecs.ECSConfig{ .component_allocator = GLOBAL_ALLOCATOR.? };
-            var ctx: *context.Context = GLOBAL_ALLOCATOR.?.create(context.Context) catch unreachable; // allocate a context. This will never be free'd
-            var tilemap = playdate.graphics.loadBitmapTable("tilemap", null).?;
+            const ctx: *context.Context = GLOBAL_ALLOCATOR.?.create(context.Context) catch unreachable; // allocate a context. This will never be free'd
+            const tilemap = playdate.graphics.loadBitmapTable("tilemap", null).?;
             ctx.* = context.Context{
                 .playdate = playdate,
                 .allocator = component_allocator(playdate),
@@ -152,7 +152,7 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
                 .tileset = tilemap,
                 .cursor = cursor.Cursor{ .bitmap = playdate.graphics.getTableBitmap(tilemap, 3).? },
                 .inv_img = playdate.graphics.loadBitmap("inv", null).?,
-                .world_frame = playdate.graphics.newBitmap(320,240,@intFromEnum(pdapi.LCDSolidColor.ColorClear)).?
+                .world_frame = playdate.graphics.newBitmap(320, 240, @intFromEnum(pdapi.LCDSolidColor.ColorClear)).?,
             };
             // g_playdate_image = playdate.graphics.loadBitmap("playdate_image", null).?;
             const font = playdate.graphics.loadFont("/System/Fonts/Asheville-Sans-14-Bold.pft", null).?;
@@ -169,7 +169,7 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
     }
     return 0;
 }
-    
+
 fn init(ctx: *context.Context) !void {
     const playdate = ctx.*.playdate;
     const world = &ctx.*.world;
@@ -182,7 +182,7 @@ fn init(ctx: *context.Context) !void {
         const player_brain: ecs.Entity = try world.new_entity();
         try world.add_component(player_brain, "brain", brain.Brain{ .reaction_time = 0, .body = undefined });
         try world.add_component(player_brain, "controls", controls.Controls{ .movement = 0 });
-        var brain_component: *brain.Brain = (try world.get_component(player_brain, "brain", brain.Brain)).?;
+        const brain_component: *brain.Brain = (try world.get_component(player_brain, "brain", brain.Brain)).?;
 
         // Body entity
         const player_body_ent: ecs.Entity = try world.new_entity();
@@ -209,7 +209,7 @@ fn init(ctx: *context.Context) !void {
         const enemy_brain: ecs.Entity = try world.new_entity();
         try world.add_component(enemy_brain, "brain", brain.Brain{ .reaction_time = 3, .body = undefined });
         try world.add_component(enemy_brain, "ai", ai.AI{});
-        var brain_component: *brain.Brain = (try world.get_component(enemy_brain, "brain", brain.Brain)).?;
+        const brain_component: *brain.Brain = (try world.get_component(enemy_brain, "brain", brain.Brain)).?;
 
         // // Body entity
         const enemy_body: ecs.Entity = try world.new_entity();
@@ -280,12 +280,11 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
         slice.image.draw(ctx, .{ .x = slice.transform.*.x, .y = slice.transform.*.y });
     }
 
-
     if (ctx.*.cursor.active == true) {
         ctx.*.cursor.draw(ctx);
     }
     playdate.graphics.popContext(); // ==========================================================
-    playdate.graphics.drawBitmap(ctx.*.world_frame, 80,0, pdapi.LCDBitmapFlip.BitmapUnflipped);
+    playdate.graphics.drawBitmap(ctx.*.world_frame, 80, 0, pdapi.LCDBitmapFlip.BitmapUnflipped);
     // UI
     // Draw Inventory Image
     {
@@ -302,13 +301,11 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
         _ = width;
     }
     { // Display Controlls
-        var iter = ecs.data_iter(.{.controls = controls.Controls}).init(&ctx.*.world);
-        while(iter.next() ) |slice| {
-            controls.display_controls(playdate,slice.controls);
+        var iter = ecs.data_iter(.{ .controls = controls.Controls }).init(&ctx.*.world);
+        while (iter.next()) |slice| {
+            controls.display_controls(playdate, slice.controls);
         }
     }
-
-
 
     // returning 1 signals to the OS to draw the frame.
     // we always want this frame drawn

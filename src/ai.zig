@@ -63,12 +63,12 @@ pub fn move(ctx: *context.Context, me: ecs.Entity, ai: *AI, ent_brain: *brain.Br
     // I really hate someone around. So much that I want to kill them!
     // Get my position, their position, and find the direction to go to.
     // TODO: Pathfinding.
-    var my_body_trans: *transform.Transform = (try ctx.*.world.get_component(my_body_entity, "transform", transform.Transform)).?;
-    var your_body_trans: *transform.Transform = (try ctx.*.world.get_component(ai.*.attack_target, "transform", transform.Transform)).?;
+    const my_body_trans: *transform.Transform = (try ctx.*.world.get_component(my_body_entity, "transform", transform.Transform)).?;
+    const your_body_trans: *transform.Transform = (try ctx.*.world.get_component(ai.*.attack_target, "transform", transform.Transform)).?;
     const diff = your_body_trans.*.sub(my_body_trans.*);
 
     // if the ENEMY is adjacent to me
-    if (try std.math.absInt(diff.x) <= 1 and try std.math.absInt(diff.y) <= 1) {
+    if (@abs(diff.x) <= 1 and @abs(diff.y) <= 1) {
         const damage: u64 = try body.get_item_damage(ctx, my_body_entity);
         try breakable.take_damage(ctx, ai.*.attack_target, damage);
     } else {

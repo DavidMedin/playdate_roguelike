@@ -6,7 +6,7 @@
       {
         "label": "Build Zig",
         "type": "shell",
-        "command": "zig",
+        "command": "${config:zig.path}",
         "args": [
             "build"
         ],
@@ -18,7 +18,7 @@
       {
         "label": "Build Test Zig",
         "type": "shell",
-        "command": "zig",
+        "command": "${config:zig.path}",
         "args": [
             "test",
             "${file}",

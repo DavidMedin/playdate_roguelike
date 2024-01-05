@@ -11,23 +11,22 @@ const breakable = @import("breakable.zig");
 const body = @import("body.zig");
 const handy = @import("handy.zig");
 
-const b_hold_click_ms= 150;
+const b_hold_click_ms = 150;
 // const b_hold_inv_ms = 750;
 pub const Controls = struct {
     const Self = @This();
     dpad_pressed_this_frame: bool = false,
     movement: pdapi.PDButtons = 0,
     buttons_pressed: pdapi.PDButtons = 0,
-    buttons_released  :pdapi.PDButtons = 0,
-    b_holding_timer : u32 = 0, // B is down right now, for how long?
-    b_held_length : u32 = 0, // B was released, how long was it pressed?
-    display_b_hold : bool = false
+    buttons_released: pdapi.PDButtons = 0,
+    b_holding_timer: u32 = 0, // B is down right now, for how long?
+    b_held_length: u32 = 0, // B was released, how long was it pressed?
+    display_b_hold: bool = false,
 };
 
 // TODO:
 // maybe remove diagonals
 // left+right in one tick should maybe cancel out
-
 
 pub fn input_direction(direction: pdapi.PDButtons) transform.Vector(i32) {
     var new_vector = transform.Vector(i32){ .x = 0, .y = 0 };
@@ -46,8 +45,7 @@ pub fn input_direction(direction: pdapi.PDButtons) transform.Vector(i32) {
     return new_vector;
 }
 
-
-pub fn hit_init(ctx: *context.Context, users_pos : *transform.Transform) void{
+pub fn hit_init(ctx: *context.Context, users_pos: *transform.Transform) void {
     ctx.*.cursor.active = true;
     ctx.*.tick_paused = true;
     ctx.*.cursor.position = users_pos.*;
@@ -102,9 +100,9 @@ pub fn item_update(ctx: *context.Context, me: ecs.Entity, entity_controls: *Cont
 
     const direction = input_direction(entity_controls.*.movement); // Resolve input
     const would_go_to = ctx.*.cursor.position.plus(direction); // Where would the cursor go?
-    var body_transform : *transform.Transform = (try world.get_component(body_entity, "transform", transform.Transform)).?;
+    const body_transform: *transform.Transform = (try world.get_component(body_entity, "transform", transform.Transform)).?;
 
-    if(body_transform.*.is_adjacent(would_go_to))  { // If the cursor would stay within 1 tile from the caster
+    if (body_transform.*.is_adjacent(would_go_to)) { // If the cursor would stay within 1 tile from the caster
         ctx.*.cursor.position = would_go_to;
     }
 
@@ -113,7 +111,7 @@ pub fn item_update(ctx: *context.Context, me: ecs.Entity, entity_controls: *Cont
         try handy.hit(ctx, body_entity, item_entity, item_handy);
         // Done hitting, resume!
         hit_deinit(ctx);
-    }else if(entity_controls.*.buttons_pressed & pdapi.BUTTON_B != 0) {
+    } else if (entity_controls.*.buttons_pressed & pdapi.BUTTON_B != 0) {
         // Pressed 'B"
         hit_deinit(ctx);
     }
@@ -122,7 +120,7 @@ pub fn item_update(ctx: *context.Context, me: ecs.Entity, entity_controls: *Cont
     entity_controls.*.buttons_pressed = 0;
 }
 
-pub inline fn pickup_item(ctx : *context.Context, me : ecs.Entity, entity_body : ecs.Entity, entity_transform : *transform.Transform, direction : transform.Vector(i32)) !void {
+pub inline fn pickup_item(ctx: *context.Context, me: ecs.Entity, entity_body: ecs.Entity, entity_transform: *transform.Transform, direction: transform.Vector(i32)) !void {
     const world = &ctx.*.world;
     // Is there an entity chillin' at this spot?
     if (try map.get_entities_here(ctx, entity_transform.*.plus(direction))) |entities_there| {
@@ -153,7 +151,7 @@ pub fn update_movement(ctx: *context.Context, me: ecs.Entity, entity_controls: *
     }
 
     const entity_body: ecs.Entity = entity_brain.*.body;
-    var entity_transform: *transform.Transform = (try world.get_component(entity_body, "transform", transform.Transform)).?;
+    const entity_transform: *transform.Transform = (try world.get_component(entity_body, "transform", transform.Transform)).?;
 
     const direction = input_direction(entity_controls.*.movement);
 
@@ -163,21 +161,19 @@ pub fn update_movement(ctx: *context.Context, me: ecs.Entity, entity_controls: *
             // Doesn't collide!
             entity_transform.* = move_to;
         }
-
     } else if (entity_controls.*.buttons_released & pdapi.BUTTON_B != 0) {
-        
+
         // const hold_to_inv_ms = 300;
         std.log.info("B has been released after {} milliseconds!", .{entity_controls.*.b_held_length});
-        if(entity_controls.*.b_held_length < b_hold_click_ms) {
+        if (entity_controls.*.b_held_length < b_hold_click_ms) {
             std.log.info("Try picking up item.", .{});
-            try pickup_item(ctx,me,entity_body,entity_transform,direction); // The player held the 'B' button short enough to pick up an item.
-        }else {
+            try pickup_item(ctx, me, entity_body, entity_transform, direction); // The player held the 'B' button short enough to pick up an item.
+        } else {
             // Open the inventory! The player held 'B' for long enough.
         }
-
     } else if (entity_controls.*.buttons_pressed & pdapi.BUTTON_A != 0) {
         // use item.
-        hit_init(ctx,entity_transform); // If we are hitting...
+        hit_init(ctx, entity_transform); // If we are hitting...
     }
 
     entity_controls.*.dpad_pressed_this_frame = false;
@@ -216,24 +212,23 @@ pub fn update_controls(playdate: *pdapi.PlaydateAPI, entity_controls: *Controls)
         entity_controls.*.buttons_released |= released & BUTTONS;
     }
 
-    if(pressed & pdapi.BUTTON_B != 0){
+    if (pressed & pdapi.BUTTON_B != 0) {
         entity_controls.*.b_holding_timer = playdate.system.getCurrentTimeMilliseconds();
-    }
-    else if(released & pdapi.BUTTON_B != 0){
+    } else if (released & pdapi.BUTTON_B != 0) {
         entity_controls.*.b_held_length = playdate.system.getCurrentTimeMilliseconds() - entity_controls.*.b_holding_timer;
         entity_controls.*.b_holding_timer = 0;
     }
     const current_held_ms = playdate.system.getCurrentTimeMilliseconds() - entity_controls.*.b_holding_timer;
 
-    if(current & pdapi.BUTTON_B != 0 and current_held_ms > b_hold_click_ms ) { // and current_held_ms < b_hold_inv_ms
+    if (current & pdapi.BUTTON_B != 0 and current_held_ms > b_hold_click_ms) { // and current_held_ms < b_hold_inv_ms
         entity_controls.*.display_b_hold = true;
-    }else {
+    } else {
         entity_controls.*.display_b_hold = false;
     }
 }
 
 pub fn display_controls(playdate: *pdapi.PlaydateAPI, entity_controls: *Controls) void {
-    if(entity_controls.*.display_b_hold){
-        _ = playdate.graphics.drawText("B", 1, pdapi.PDStringEncoding.ASCIIEncoding, 400-10, 240 - 20);
+    if (entity_controls.*.display_b_hold) {
+        _ = playdate.graphics.drawText("B", 1, pdapi.PDStringEncoding.ASCIIEncoding, 400 - 10, 240 - 20);
     }
 }
