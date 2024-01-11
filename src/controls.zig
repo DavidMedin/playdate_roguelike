@@ -143,6 +143,7 @@ pub inline fn pickup_item(ctx: *context.Context, me: ecs.Entity, entity_body: ec
     }
 }
 
+/// A Tick Function for moving the character.
 pub fn update_movement(ctx: *context.Context, me: ecs.Entity, entity_controls: *Controls, entity_brain: *brain.Brain) !void {
     var world: *ecs.ECS = &ctx.*.world; // Helper misdirection
     if (entity_brain.*.time_till_react != 0) {

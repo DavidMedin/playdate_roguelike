@@ -13,12 +13,13 @@ pub const Context = struct {
     map: map.Map,
     tileset: *pdapi.LCDBitmapTable,
     cursor: cursor.Cursor,
-    inv_img : *pdapi.LCDBitmap,
+    inv_img: *pdapi.LCDBitmap,
 
-    game_paused: bool = false,
-    tick_paused: bool = false, // Is paused when game_paused is true
+    game_paused: bool = false, // Is *everything* paused?
+    tick_paused: bool = false, // Is time paused (not your cursor for aiming).
+    //       Is paused when game_paused is true
 
-    world_frame : *pdapi.LCDBitmap,
+    world_frame: *pdapi.LCDBitmap,
 
     player_entity: ecs.Entity = null,
 };

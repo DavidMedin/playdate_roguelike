@@ -59,6 +59,9 @@ const handy = @import("handy.zig");
 // [] exit Inv (B)
 // [] pause game in inv
 // [] DPAD nav
+
+// [] Make it turn-based. The playdate is slow (few buttons), so the player shouldn't be timed.
+
 // [] crank nav?
 // [] drop item
 // [] equip item
@@ -75,7 +78,7 @@ const handy = @import("handy.zig");
 var GLOBAL_PLAYDATE: ?*pdapi.PlaydateAPI = null;
 var GLOBAL_ALLOCATOR: ?std.mem.Allocator = null;
 
-// This is how you can use std.log.* using the Playdate's logToConsole function. If want to use std.debug.print, cry, seeth, cope, commit nix
+/// This is how you can use std.log.* using the Playdate's logToConsole function. If want to use std.debug.print, cry, seeth, cope, commit nix
 pub const std_options = struct {
     pub fn logFn(comptime level: std.log.Level, comptime scope: @TypeOf(.EnumLiteral), comptime format: []const u8, args: anytype) void {
         _ = scope;
@@ -93,6 +96,7 @@ pub const std_options = struct {
 // ===============================================================
 
 const ALLOC_PRINT = false;
+/// Zig Allocator that uses the Playdate allocation functions.
 fn component_allocator(playdate_api: *pdapi.PlaydateAPI) std.mem.Allocator {
     return std.mem.Allocator{
         .ptr = playdate_api,
@@ -131,9 +135,7 @@ fn component_allocator(playdate_api: *pdapi.PlaydateAPI) std.mem.Allocator {
     };
 }
 
-// var world: ecs.ECS = undefined;
-// var world_map : map.Map = undefined;
-
+/// Entrypoint into Playdate API.
 pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEvent, arg: u32) callconv(.C) c_int {
     _ = arg;
     switch (event) {
@@ -170,6 +172,7 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
     return 0;
 }
 
+/// Called by eventHandler at the beginning of the game. Initializes resources and entities.
 fn init(ctx: *context.Context) !void {
     const playdate = ctx.*.playdate;
     const world = &ctx.*.world;
@@ -194,20 +197,11 @@ fn init(ctx: *context.Context) !void {
         try world.add_component(player_body_ent, "transform", transform.Transform{ .x = 4, .y = 4 });
         try world.add_component(player_body_ent, "relation", ai.Relation{ .in = ai.Relation.HUMAN, .hates = 0, .loves = 0 });
         try world.add_component(player_body_ent, "breakable", breakable.Breakable{ .max_health = 4, .health = 4 });
-
-        // const sword_entity : ecs.Entity = block: {
-        //     const sword_ent = try world.new_entity();
-        //     try world.add_component(sword_ent, "handy", handy.Handy{.damage = 2});
-        //     break :block sword_ent;
-        // };
-
-        // const player_body : *body.Body = (try world.get_component(player_body_ent, "body", body.Body)).?;
-        // player_body.*.holding_item = sword_entity;
     }
 
     { // Brain entity
         const enemy_brain: ecs.Entity = try world.new_entity();
-        try world.add_component(enemy_brain, "brain", brain.Brain{ .reaction_time = 3, .body = undefined });
+        try world.add_component(enemy_brain, "brain", brain.Brain{ .reaction_time = 6, .body = undefined });
         try world.add_component(enemy_brain, "ai", ai.AI{});
         const brain_component: *brain.Brain = (try world.get_component(enemy_brain, "brain", brain.Brain)).?;
 
@@ -244,22 +238,23 @@ fn init(ctx: *context.Context) !void {
     std.log.debug("Finished the init!", .{});
 }
 
-var time_leftovers: f32 = 0;
+// var time_leftovers: f32 = 0;
+/// Called every frame. Draws things and calls the 'Tick' function when it is time.
 fn update(userdata: ?*anyopaque) callconv(.C) c_int {
     const ctx: *context.Context = @ptrCast(@alignCast(userdata.?));
     const playdate = ctx.*.playdate;
     const world = &ctx.*.world;
 
-    const tick_length: f32 = 0.25; // In seconds (microsecond accuracy)
-    const time: f32 = playdate.system.getElapsedTime();
-    if (time + time_leftovers >= tick_length) {
-        time_leftovers = time + time_leftovers - tick_length;
-        if (time_leftovers >= tick_length) {
-            std.log.warn("Dropping frames! {} leftover seconds, {} dropped frames.", .{ time_leftovers, std.math.floor(time_leftovers / tick_length) });
-        }
-        playdate.system.resetElapsedTime();
-        tick(ctx) catch unreachable;
-    }
+    // const tick_length: f32 = 0.25; // In seconds (microsecond accuracy)
+    // const time: f32 = playdate.system.getElapsedTime();
+    // if (time + time_leftovers >= tick_length) {
+    //     time_leftovers = time + time_leftovers - tick_length;
+    //     if (time_leftovers >= tick_length) {
+    //         std.log.warn("Dropping frames! {} leftover seconds, {} dropped frames.", .{ time_leftovers, std.math.floor(time_leftovers / tick_length) });
+    //     }
+    //     playdate.system.resetElapsedTime();
+    //     tick(ctx) catch unreachable;
+    // }
 
     // Iterate through all 'Controllable's.
     var move_iter = ecs.data_iter(.{ .controls = controls.Controls }).init(world);
@@ -312,6 +307,7 @@ fn update(userdata: ?*anyopaque) callconv(.C) c_int {
     return 1;
 }
 
+/// A Function called for every in-game time unit. Often pauses when the player is deciding their move.
 fn tick(ctx: *context.Context) !void {
     if (!ctx.*.game_paused and !ctx.*.tick_paused) {
         // game is not paused, go ham.
